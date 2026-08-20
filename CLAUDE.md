@@ -24,6 +24,10 @@ project get built. This means:
 
 ## Non-negotiables
 
+0. **⛔ Never install or use CocoaPods.** Hard constraint from the project owner. Every
+   dependency is verified to build via Swift Package Manager or native-asset build hooks
+   (`hook/build.dart`). If a package requires CocoaPods, **replace the package** — do not
+   install CocoaPods, do not add a Podfile, do not suggest it as a fallback.
 1. **Never commit an API key.** The Anthropic key lives in the Cloudflare Worker proxy, set
    via `wrangler secret`. If you find a key in the repo, stop and remove it.
 2. **Never break `pdfrx`'s native text selection.** Phases 4–5 depend on it. See PLAN.md §5
@@ -37,7 +41,7 @@ project get built. This means:
 Flutter app ──HTTPS──> Cloudflare Worker (holds API key) ──> Claude API
      │
      ├── pdfrx        (render + text coordinates + selection)
-     ├── Isar         (books, progress, notes, explanation cache)
+     ├── Drift        (SQLite: books, progress, notes, explanation cache)
      └── WordNet SQLite (bundled, offline definitions)
 ```
 
@@ -63,9 +67,10 @@ Analyzed `the_communication_book_44_ideas_for_better_conversations_every_day.pdf
 
 ## Commands
 
-**iOS builds use Swift Package Manager, not CocoaPods.** Requires Flutter 3.44+. Do not
-install CocoaPods preemptively — Flutter falls back to it per-plugin, so only install it if a
-build explicitly fails asking for it.
+**iOS builds use Swift Package Manager, never CocoaPods.** See non-negotiable #0.
+Verified CocoaPods-free as of 2026-08-20: `pdfium_flutter` (SPM), `file_picker_darwin` (SPM),
+`path_provider_foundation` (SPM), `url_launcher_ios` (SPM), `sqlite3` (build hook).
+Do **not** add `sqlite3_flutter_libs` — it is an EOL no-op stub.
 
 ```bash
 flutter run -d iphone        # run on iOS Simulator

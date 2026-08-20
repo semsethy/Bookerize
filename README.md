@@ -26,7 +26,7 @@ book.
 
 - **Flutter** — iOS first, Android to follow
 - **[pdfrx](https://pub.dev/packages/pdfrx)** — PDFium rendering with per-character text coordinates
-- **Isar** — local storage for books, progress, notes, and cached explanations
+- **Drift** (SQLite) — local storage for books, progress, notes, and cached explanations
 - **WordNet (SQLite)** — bundled offline dictionary
 - **Claude API** via a Cloudflare Worker proxy — contextual meanings and explanations
 

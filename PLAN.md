@@ -64,7 +64,7 @@ Target audience: you and a small group of friends. English-language books.
 │        │        └──────────┬───────────┘    │
 │        │                   │                │
 │  ┌─────▼───────────────────▼─────────────┐  │
-│  │  Local storage (Isar)                 │  │
+│  │  Local storage (Drift + SQLite)         │  │
 │  │  books · progress · notes · cache     │  │
 │  └───────────────────────────────────────┘  │
 │  ┌───────────────────────────────────────┐  │
@@ -92,15 +92,34 @@ no server to maintain, and Node is already installed for local development.
 
 ### Tech stack
 
-| Layer | Package | Purpose |
-|---|---|---|
-| PDF render + text | `pdfrx` | Page bitmaps, text with character coordinates, native selection |
-| Storage | `isar` | Books, reading progress, notes, explanation cache |
-| File import | `file_picker` | Pick PDFs from Files app / iCloud |
-| Dictionary | `sqflite` + WordNet | Bundled offline definitions |
-| HTTP | `dio` | Talks to the proxy, handles streaming |
-| State | `riverpod` | App state; beginner-friendly and well documented |
-| Page curl | TBD (`flutter_book_reader` or custom) | Phase 7 only |
+All versions verified against pub.dev on 2026-08-20 and confirmed CocoaPods-free.
+
+| Layer | Package | Version | iOS native | Purpose |
+|---|---|---|---|---|
+| PDF render + text | `pdfrx` | 2.4.7 | SPM + build hook | Page bitmaps, character coordinates, native selection |
+| Storage | `drift` + `drift_flutter` | 2.34.3 | via `sqlite3` build hook | Books, progress, notes, explanation cache |
+| File import | `file_picker` | 12.0.0 | SPM | Pick PDFs from Files / iCloud |
+| Dictionary | `drift` + custom WordNet DB | — | (same as storage) | Bundled offline definitions |
+| HTTP | `dio` | 5.11.0 | pure Dart | Talks to the proxy, handles streaming |
+| State | `flutter_riverpod` | 3.4.2 | pure Dart | App state; well documented |
+| Page curl | TBD | — | — | Phase 7 only |
+
+### ⛔ CocoaPods is prohibited on this project
+
+Not a preference — a constraint. Every dependency above is verified to build without it via
+Swift Package Manager or native-asset build hooks. **If a future package requires CocoaPods,
+replace the package — do not install CocoaPods.**
+
+Enforced by `flutter config --enable-swift-package-manager true` (set 2026-08-20).
+
+### Two packages ruled out during the audit
+
+- **`isar`** — last published **2023-04-25**, over three years stale. Replaced with `drift`,
+  which is actively maintained (2026-07-27) and SQLite-backed, so the app's data and the
+  WordNet dictionary share one storage engine instead of two.
+- **`sqlite3_flutter_libs`** — now an empty stub (`0.6.0+eol`), described upstream as
+  *"Not used anymore, update to version 3.x of package:sqlite3"*. Do **not** add it;
+  `sqlite3` 3.5.2 compiles its own native library via `hook/build.dart`.
 
 ---
 
@@ -109,23 +128,21 @@ no server to maintain, and Node is already installed for local development.
 Each phase ends with something that **runs**. Nothing is built on a foundation you can't see
 working.
 
-### Phase 0 — Environment setup
-Upgrade Flutter to 3.44+ (Swift Package Manager becomes the iOS default), verify
-`flutter doctor` passes for iOS, boot the Simulator.
-**Done when:** `flutter doctor` shows no iOS blockers.
+### Phase 0 — Environment setup ✅ **DONE (2026-08-20)**
+- Flutter upgraded 3.41.9 → **3.47.1**
+- `enable-swift-package-manager` set to `true` explicitly
+- Full dependency set resolved together in a scratch project (73 packages, no conflicts)
+- Every native plugin verified CocoaPods-free — see §3
+- Scratch project deleted
 
-> **No CocoaPods.** `pdfrx` gets its native code from `pdfium_flutter`, which ships a
-> `Package.swift`, so SPM covers it. Flutter falls back to CocoaPods per-plugin for anything
-> not yet migrated — if `file_picker`, `sqflite`, or `isar_flutter_libs` turns out to need it,
-> the build will say so and *then* we install it. Don't install it preemptively: the
-> [CocoaPods registry goes read-only on 2026-12-02](https://flutter.dev/blog/saying-goodbye-to-cocoapods-swift-package-manager-is-soon-the-default-in-flutter).
+Remaining: `flutter doctor` review and first Simulator boot, done at the start of Phase 1.
 
 ### Phase 1 — A PDF on screen
 `flutter create`, add `pdfrx`, display the bundled sample book. No paging, no styling.
 **Done when:** the book renders in the iOS Simulator and you can scroll it.
 
 ### Phase 2 — Library and persistence
-Import PDFs via `file_picker`, copy into app storage, save metadata to Isar, render a home
+Import PDFs via `file_picker`, copy into app storage, save metadata to Drift, render a home
 grid with cover thumbnails (page 1). Tap a book to open. Save and restore last-read page.
 **Done when:** you can close the app, reopen it, tap a book, and land on the page you left.
 
@@ -148,7 +165,7 @@ sentence shows a toolbar with a (non-functional) Explain button.
 - Cloudflare Worker proxy: holds the key, per-device tokens, rate limiting
 - "Meaning in this sentence" → streams into the word popup
 - "Explain simply" → streams into a bottom sheet
-- Cache every result in Isar so the same lookup is never billed twice
+- Cache every result in Drift so the same lookup is never billed twice
 - Graceful offline behavior: dictionary still works, AI features show a clear message
 **Done when:** both AI features work on a real book, and airplane mode degrades cleanly.
 
