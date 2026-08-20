@@ -110,8 +110,15 @@ Each phase ends with something that **runs**. Nothing is built on a foundation y
 working.
 
 ### Phase 0 — Environment setup
-Install CocoaPods, verify `flutter doctor` passes for iOS, boot the Simulator.
+Upgrade Flutter to 3.44+ (Swift Package Manager becomes the iOS default), verify
+`flutter doctor` passes for iOS, boot the Simulator.
 **Done when:** `flutter doctor` shows no iOS blockers.
+
+> **No CocoaPods.** `pdfrx` gets its native code from `pdfium_flutter`, which ships a
+> `Package.swift`, so SPM covers it. Flutter falls back to CocoaPods per-plugin for anything
+> not yet migrated — if `file_picker`, `sqflite`, or `isar_flutter_libs` turns out to need it,
+> the build will say so and *then* we install it. Don't install it preemptively: the
+> [CocoaPods registry goes read-only on 2026-12-02](https://flutter.dev/blog/saying-goodbye-to-cocoapods-swift-package-manager-is-soon-the-default-in-flutter).
 
 ### Phase 1 — A PDF on screen
 `flutter create`, add `pdfrx`, display the bundled sample book. No paging, no styling.

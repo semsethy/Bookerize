@@ -45,10 +45,17 @@ needs an embedded text layer to do word lookup.
 
 ### Requirements
 
-- Flutter 3.41+
-- Xcode 26+ with CocoaPods (`sudo gem install cocoapods`)
+- **Flutter 3.44+** — needed for Swift Package Manager to be the default on iOS
+- Xcode 26+
 - A Cloudflare account (Phase 5+, for the API proxy)
 - Apple Developer Program (Phase 8 only, for TestFlight)
+
+> **CocoaPods is not required.** This project builds on Swift Package Manager. `pdfrx` pulls
+> its native code from `pdfium_flutter`, which ships a `Package.swift`. Flutter falls back to
+> CocoaPods only for individual plugins that haven't migrated yet — install it *only* if a
+> build actually asks for it. The
+> [CocoaPods registry becomes read-only on 2026-12-02](https://flutter.dev/blog/saying-goodbye-to-cocoapods-swift-package-manager-is-soon-the-default-in-flutter),
+> so SPM is the forward path.
 
 ## Security
 

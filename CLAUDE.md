@@ -63,6 +63,10 @@ Analyzed `the_communication_book_44_ideas_for_better_conversations_every_day.pdf
 
 ## Commands
 
+**iOS builds use Swift Package Manager, not CocoaPods.** Requires Flutter 3.44+. Do not
+install CocoaPods preemptively — Flutter falls back to it per-plugin, so only install it if a
+build explicitly fails asking for it.
+
 ```bash
 flutter run -d iphone        # run on iOS Simulator
 flutter analyze              # static analysis — run before committing

@@ -8,7 +8,8 @@ picked up on any machine.
 ## 🔖 Resume here
 
 > **Current phase:** Phase 0 — Environment setup
-> **Next action:** Install CocoaPods, then run `flutter doctor` and fix any iOS blockers.
+> **Next action:** Upgrade Flutter to 3.44+ (in progress), then `flutter doctor` and boot the
+> iOS Simulator.
 > **Blocked on:** Nothing.
 
 ### How to resume on a new laptop
@@ -54,11 +55,11 @@ Checked on Sethy's Mac, 2026-08-20:
 
 | Tool | Status | Notes |
 |---|---|---|
-| Flutter | ✅ 3.41.9 | Homebrew Caskroom |
+| Flutter | 🟡 Upgrading 3.41.9 → 3.47.1 | Homebrew Caskroom; 3.44+ needed for SPM-by-default |
 | Xcode | ✅ 26.3 | Build 17C519 |
 | Node | ✅ v26.0.0 | For the Cloudflare Worker proxy |
 | Git | ✅ 2.50.1 | |
-| **CocoaPods** | ❌ **Missing** | `sudo gem install cocoapods` — required for Flutter iOS |
+| CocoaPods | ➖ **Not needed** | Building on Swift Package Manager — see decisions log |
 | Apple Developer Program | ❌ Not enrolled | Only needed at Phase 8 (and for physical-device testing) |
 | Cloudflare account | ❌ Not set up | Only needed at Phase 5 |
 
@@ -77,6 +78,8 @@ Append here whenever a choice is made, so the reasoning survives context resets.
 | 2026-08-20 | Page curl deferred to Phase 7, hybrid approach | Native `pdfrx` selection lives in its viewer widget; a bitmap-based curl would break Phases 4–5 |
 | 2026-08-20 | `claude-opus-5` with streaming | Explanation quality; streaming hides latency |
 | 2026-08-20 | Hybrid dictionary: offline WordNet + AI for context | Instant and free for the common case; AI only for genuine ambiguity |
+| 2026-08-20 | **Swift Package Manager, not CocoaPods** | Verified `pdfium_flutter` (pdfrx's native layer) ships `darwin/pdfium_flutter/Package.swift`. SPM is default from Flutter 3.44. The CocoaPods registry goes read-only 2026-12-02, so building on it now would start on a sunset dependency. Install CocoaPods *only* if a specific plugin's build demands it. |
+| 2026-08-20 | Upgrade Flutter 3.41.9 → 3.47.1 | Gets SPM-by-default; no code written yet so the upgrade carries no regression risk |
 
 ---
 
