@@ -1,0 +1,43 @@
+# Flutter / Dart
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.g.dart
+*.freezed.dart
+
+# iOS
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+*.xcuserstate
+*.xcworkspace/xcuserdata/
+
+# Android
+android/.gradle/
+android/local.properties
+android/app/debug/
+android/app/release/
+
+# Secrets — NEVER commit
+.env
+.env.*
+*.pem
+proxy/.dev.vars
+secrets.dart
+
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Sample books — copyrighted, never commit
+assets/books/*.pdf
+assets/books/*.epub
