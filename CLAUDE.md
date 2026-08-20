@@ -2,6 +2,21 @@
 
 Context for Claude Code. Read this first, then `progress.md` → "Resume here".
 
+## ⚡ Run this before writing any code
+
+```bash
+./tool/preflight.sh
+```
+
+**At the start of every session on a machine you have not verified, run it before touching
+code.** It checks the Flutter version, Swift Package Manager state, Xcode and simulators,
+disk space, that no Podfile has appeared, that no banned packages are in `pubspec.yaml`, and
+that a sample book exists. Exit 0 = safe to build; exit 1 = blockers, printed with the exact
+fix command for each.
+
+Do not skip it and do not "fix" a failure by working around it — a blocker means the build
+will fail later in a more confusing way.
+
 ## What this is
 
 **Bookerize** — a Flutter PDF book reader with AI comprehension aids. Long-press a word for

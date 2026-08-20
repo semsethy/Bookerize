@@ -8,7 +8,7 @@ picked up on any machine.
 ## 🔖 Resume here
 
 > **Current phase:** Phase 0 ✅ complete → starting **Phase 1 (A PDF on screen)**
-> **Next action:** `flutter doctor` review, boot the iOS Simulator, then `flutter create`
+> **Next action:** run `./tool/preflight.sh`, then `flutter doctor`, boot the Simulator, `flutter create`
 > the real app and get the sample book rendering.
 > **Blocked on:** Nothing.
 
@@ -17,11 +17,21 @@ picked up on any machine.
 ```bash
 git clone https://github.com/semsethy/Bookerize.git
 cd Bookerize
-# Copy any TEXT-BASED pdf into assets/books/ — sample books are gitignored (see below)
+
+# 1. Copy any TEXT-BASED pdf into assets/books/ — sample books are gitignored (see below)
+# 2. Verify the machine can actually build this project:
+./tool/preflight.sh
+
+# 3. Only once preflight exits 0:
 claude
 ```
 
 Then say: **"Read progress.md and continue from the Resume here section."**
+
+`tool/preflight.sh` checks Flutter version, Swift Package Manager, Xcode, simulators, disk,
+banned packages, and stray Podfiles — printing the exact fix command for anything that fails.
+Claude Code is also instructed (in `CLAUDE.md`) to run it before writing code, so you get the
+check even if you forget.
 
 > ⚠️ **The sample book is not in the repo.** `assets/books/*.pdf` is gitignored because the
 > test file is copyrighted and this repo is public. Drop your own text-based PDF in there
@@ -51,9 +61,8 @@ Legend: ⬜ not started · 🟡 in progress · ✅ done · 🔴 blocked
 
 ## Environment status
 
-Checked on Sethy's Mac, 2026-08-20:
-
-Full prerequisite audit run 2026-08-20. Everything needed through Phase 4 is present.
+Full prerequisite audit run on Sethy's Mac, 2026-08-20. Everything needed through Phase 4 is
+present. **On any other machine, run `./tool/preflight.sh` instead of trusting this table.**
 
 ### Toolchain
 
@@ -110,7 +119,7 @@ Append here whenever a choice is made, so the reasoning survives context resets.
 | 2026-08-20 | Page curl deferred to Phase 7, hybrid approach | Native `pdfrx` selection lives in its viewer widget; a bitmap-based curl would break Phases 4–5 |
 | 2026-08-20 | `claude-opus-5` with streaming | Explanation quality; streaming hides latency |
 | 2026-08-20 | Hybrid dictionary: offline WordNet + AI for context | Instant and free for the common case; AI only for genuine ambiguity |
-| 2026-08-20 | **Swift Package Manager, not CocoaPods** | Verified `pdfium_flutter` (pdfrx's native layer) ships `darwin/pdfium_flutter/Package.swift`. SPM is default from Flutter 3.44. The CocoaPods registry goes read-only 2026-12-02, so building on it now would start on a sunset dependency. Install CocoaPods *only* if a specific plugin's build demands it. |
+| 2026-08-20 | **Swift Package Manager, not CocoaPods** | Verified `pdfium_flutter` (pdfrx's native layer) ships `darwin/pdfium_flutter/Package.swift`. SPM is default from Flutter 3.44. The CocoaPods registry goes read-only 2026-12-02, so building on it now would start on a sunset dependency. *(Superseded same day by the outright prohibition below.)* |
 | 2026-08-20 | Upgrade Flutter 3.41.9 → 3.47.1 | Gets SPM-by-default; no code written yet so the upgrade carries no regression risk |
 | 2026-08-20 | **CocoaPods prohibited outright** | Owner constraint. If a package needs CocoaPods, replace the package — never install it as a fallback. Verified the whole stack builds without it. |
 | 2026-08-20 | **Isar → Drift** for local storage | Isar's last publish was 2023-04-25 (3+ years stale, effectively abandoned). Drift is active (2026-07-27), SQLite-backed, so app data and the WordNet dictionary share one engine instead of two. |
@@ -132,6 +141,9 @@ Newest first. One entry per working session.
 - **Found no maintained WordNet package** → we'll generate our own SQLite at Phase 4
 - Resolved all 73 deps together in a scratch project, no conflicts; deleted the scratch
 - Recorded CocoaPods prohibition as non-negotiable #0 in CLAUDE.md
+- Wrote `tool/preflight.sh` so any new machine verifies itself before building; wired it
+  into CLAUDE.md, README and the resume instructions. Unit-tested the version comparison
+  (incl. `3.9` vs `3.44`) and confirmed blockers exit non-zero.
 - **Still no application code written**
 
 ### 2026-08-20 — Planning

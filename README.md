@@ -35,9 +35,15 @@ book.
 ```bash
 git clone https://github.com/semsethy/Bookerize.git
 cd Bookerize
+
+./tool/preflight.sh    # verifies your machine can build this — do this first
 flutter pub get
 flutter run -d iphone
 ```
+
+`preflight.sh` checks Flutter version, Swift Package Manager, Xcode, simulators, disk space,
+and that nothing has pulled in CocoaPods or a banned package. It exits non-zero with a
+specific fix command for each problem, so you find out now rather than mid-build.
 
 **You need to supply your own book.** `assets/books/*.pdf` is gitignored, so drop any
 **text-based** PDF into `assets/books/` before running. Scanned PDFs won't work — the app
