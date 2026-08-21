@@ -7,10 +7,12 @@ picked up on any machine.
 
 ## 🔖 Resume here
 
-> **Current phase:** Phase 2 ✅ complete → starting **Phase 3 (Full-screen paging)**
-> **Next action:** one page per screen, horizontal swipe with a plain `PageView`. Deliberately
-> not the page curl yet — see PLAN.md §5 for why that waits until Phase 7.
-> **Blocked on:** Nothing.
+> **Current phase:** Phase 3 ✅ complete → starting **Phase 4 (Text interaction layer)** ⭐
+> **Next action:** the hard one. Screen point → PDF page space, long-press → hit-test character
+> rects → expand to word boundaries by *proximity* (headings are letter-spaced), pull the
+> containing sentence, and show an offline WordNet definition. Build the WordNet SQLite first.
+> **Blocked on:** Nothing. ⚠️ Please long-press some text in the Simulator by hand and tell me
+> it still selects — see "Not verified" in the Phase 3 session note.
 
 ### How to resume on a new laptop
 
@@ -48,7 +50,7 @@ Claude Code reads `CLAUDE.md` automatically, which points at `PLAN.md` and this 
 | 0 | Environment setup | ✅ Done | Flutter 3.47.1, SPM on, full dep audit passed |
 | 1 | A PDF on screen | ✅ Done | pdfrx renders the sample book in the Simulator |
 | 2 | Library and persistence | ✅ Done | Drift + import + covers; resumes your page |
-| 3 | Full-screen paging | ⬜ Not started | |
+| 3 | Full-screen paging | ✅ Done | Horizontal snap paging, built on pdfrx's own hooks |
 | 4 | Text interaction layer | ⬜ Not started | The hard one |
 | 5 | AI layer (+ proxy) | ⬜ Not started | Needs Cloudflare account |
 | 6 | Notes and backgrounds | ⬜ Not started | |
@@ -132,12 +134,48 @@ Append here whenever a choice is made, so the reasoning survives context resets.
 | 2026-08-21 | **Commit generated `*.g.dart`** (was gitignored) | This project is cloned onto a second machine and must build immediately. Ignoring generated Drift code means a fresh clone fails to compile until someone knows to run `build_runner`. |
 | 2026-08-21 | Opening a book marks it as read, not just turning a page | pdfrx only reports page changes the reader makes, so without this the shelf still said "Not started" after a full session. |
 | 2026-08-21 | Covers use `BoxFit.contain` on white, not `BoxFit.cover` | Page proportions vary book to book; cropping ate the title off the edges of the sample book. |
+| 2026-08-21 | **Paging built from pdfrx's own hooks, not a `PageView`** | PLAN.md said "a plain PageView", but that means putting page *images* in a list, and pdfrx's text selection only lives inside its viewer — it would have broken non-negotiable #2 and with it Phases 4–5. Instead: horizontal `layoutPages`, `SizeDelegateSmart(maxPagesVisible: 1)` so one page fills the screen, and a snap on `onInteractionEnd`. No gesture detector wraps the viewer, so nothing competes for the drags selection needs. |
+| 2026-08-21 | Snap on interaction-end, not via `ScrollPhysics` | pdfrx only runs scroll physics on a *fling*, so a snapping physics would leave a slow drag resting between two pages. |
+| 2026-08-21 | Don't snap when the view never moved | Every gesture ends with an interaction-end, including a long-press. Animating back to the page you never left is pointless and risks cancelling a selection. |
+| 2026-08-21 | **Strip pdfrx's "Select All" from the context menu** | It paints a selection across all 137 pages; the 46 with no text have zero text fragments, and pdfrx asks that empty list for its last element → `Bad state: No element`, thrown from `paint()`. Reachable from the default toolbar. Recorded as non-negotiable #4. |
+| 2026-08-21 | Added `integration_test` (verified SPM, no CocoaPods) | Unit tests cannot reach a finger, and "turn a page and your place is kept" is made of gestures. |
 
 ---
 
 ## Session log
 
 Newest first. One entry per working session.
+
+### 2026-08-21 — Phase 3: full-screen paging
+- One page per screen, turned by swiping sideways, **without replacing the pdfrx viewer**
+  (see the decisions log — a literal `PageView` would have broken non-negotiable #2)
+- `lib/reader/page_layout.dart` — horizontal layout with a uniform slot pitch, plus the
+  arithmetic for "which page is nearest" and "are we already resting on one"
+- `lib/reader/reader_chrome.dart` — hidden by default; tap the middle to reveal a back
+  button, a page slider and "Page N of M". Tap the left/right edge to turn a page.
+- Added `integration_test` — **confirmed it ships a `Package.swift`, so still no CocoaPods**
+- 20 unit tests + 2 on-device tests, `flutter analyze` clean, preflight green
+
+**Closed the gap left open in Phase 2:** an on-device test now taps a book, swipes to turn a
+page, goes back, and asserts the shelf shows the page it reached. Turning a page with a real
+gesture saves your place — verified, not assumed.
+
+**Found a crash in pdfrx, reachable from the app.** Selecting a word and tapping "Select All"
+paints a selection over every page; the 46 illustration-only pages have no text fragments, and
+pdfrx asks that empty list for its last element — `Bad state: No element`, out of `paint()`.
+Stripped the item from the context menu and recorded it as non-negotiable #4. Phase 4 replaces
+this toolbar anyway.
+
+**⚠️ Not verified: selection by an actual finger.** Synthesised long-presses don't reach pdfrx's
+selection under the integration-test harness — confirmed by long-pressing a *bare* `PdfViewer`
+with none of our configuration, which also selected nothing. So this is a harness limit, not a
+regression. The on-device test proves selection is enabled and the text layer + per-character
+rects are reachable through the paging config, which is the regression worth catching.
+**Someone should long-press text in the Simulator by hand before Phase 4 leans on it.**
+
+Also worth a look: on a tall phone a 612x792 page fits by width and leaves roughly 40% of the
+screen as empty ground above and below. That is what "show the whole page" means on this
+aspect ratio — but it is a design choice, and Phase 6's reading backgrounds will fill it.
 
 ### 2026-08-21 — Phase 2: library and persistence
 - Added `drift`, `sqlite3`, `file_picker`, `path_provider`, `flutter_riverpod`, `path`

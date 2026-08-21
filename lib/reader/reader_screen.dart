@@ -5,13 +5,18 @@ import 'package:pdfrx/pdfrx.dart';
 import '../data/app_database.dart';
 import '../data/providers.dart';
 import '../theme.dart';
+import 'page_layout.dart';
+import 'reader_chrome.dart';
 
-/// Opens a book at the page you left it on, and writes your position back on
-/// every page turn.
+/// One page per screen, turned by swiping sideways.
 ///
-/// The book is looked up by id rather than passed in as an object, so the page
-/// this screen restores is always the one in the database — not a copy that
-/// went stale while the library screen was on screen.
+/// This is built *on top of* pdfrx's own viewer rather than by putting page
+/// images in a PageView. That matters: pdfrx's text selection only works inside
+/// its viewer, and Phases 4–5 (word lookup, sentence explanation) are built on
+/// that selection. So the paging here is done with the viewer's own hooks —
+/// a horizontal layout, plus a snap on `onInteractionEnd` — and never by
+/// wrapping the viewer in a gesture detector that would swallow the drags
+/// selection needs.
 class ReaderScreen extends ConsumerStatefulWidget {
   const ReaderScreen({required this.bookId, super.key});
 
@@ -23,8 +28,17 @@ class ReaderScreen extends ConsumerStatefulWidget {
 
 class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   late final Future<Book> _book = _openBook();
+  final _controller = PdfViewerController();
 
   int? _lastSaved;
+  int _pageNumber = 1;
+  int _pageCount = 1;
+  bool _chromeVisible = false;
+  bool _snapping = false;
+
+  /// The zoom at which exactly one page fills the screen. Captured once the
+  /// viewer is ready so we can tell "resting on a page" from "zoomed in".
+  double? _fitZoom;
 
   /// Opening a book counts as reading it, even if you never turn a page.
   /// pdfrx only reports page changes the reader actually makes, so without this
@@ -33,15 +47,92 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     final db = ref.read(databaseProvider);
     final book = await db.bookById(widget.bookId);
     _lastSaved = book.lastPage;
+    _pageNumber = book.lastPage;
+    _pageCount = book.pageCount;
     await db.saveLastPage(book.id, book.lastPage);
     return book;
   }
 
   void _onPageChanged(int? pageNumber) {
-    if (pageNumber == null || pageNumber == _lastSaved) return;
+    if (pageNumber == null) return;
+    if (mounted) setState(() => _pageNumber = pageNumber);
+    if (pageNumber == _lastSaved) return;
     _lastSaved = pageNumber;
     // Fire and forget: a page turn shouldn't wait on a disk write.
     ref.read(databaseProvider).saveLastPage(widget.bookId, pageNumber);
+  }
+
+  /// Settle on whole pages after every drag, however slow.
+  ///
+  /// pdfrx only runs its scroll physics on a fling, so relying on a snapping
+  /// ScrollPhysics would leave a slow drag resting between two pages.
+  Future<void> _snapToNearestPage(ScaleEndDetails _) async {
+    if (_snapping || !_controller.isReady) return;
+
+    // Leave the reader alone while zoomed in: they're inspecting a diagram,
+    // not turning a page, and yanking the view to a page edge would fight them.
+    final fit = _fitZoom;
+    if (fit != null && _controller.currentZoom > fit * 1.02) return;
+
+    // Every gesture ends here, including a long-press to select a word. If the
+    // view never moved, snapping it "back" to the page it never left cancels
+    // that selection — which would break Phases 4-5. Leave it alone.
+    if (isRestingOnPage(_controller.layout, _controller.visibleRect)) return;
+
+    // Belt and braces: never yank the view while the reader has text selected.
+    if (_controller.textSelectionDelegate.hasSelectedText) return;
+
+    final target = nearestPageNumber(
+      _controller.layout,
+      _controller.visibleRect,
+    );
+
+    _snapping = true;
+    try {
+      await _controller.goToPage(
+        pageNumber: target,
+        duration: const Duration(milliseconds: 220),
+      );
+    } finally {
+      _snapping = false;
+    }
+  }
+
+  Future<void> _goToPage(int pageNumber) async {
+    if (!_controller.isReady) return;
+    final clamped = pageNumber.clamp(1, _pageCount);
+    if (clamped == _pageNumber) return;
+    await _controller.goToPage(pageNumber: clamped);
+  }
+
+  /// pdfrx hands us taps from its own gesture pipeline, so we get edge-tap
+  /// paging without adding a competing GestureDetector.
+  bool _onTap(
+    BuildContext context,
+    PdfViewerController controller,
+    PdfViewerGeneralTapHandlerDetails details,
+  ) {
+    if (details.type != PdfViewerGeneralTapType.tap) return false;
+
+    // Never steal a tap that lands on text the reader has selected — that's
+    // their selection, and Phase 4 hangs off it.
+    if (details.tapOn == PdfViewerPart.selectedText) return false;
+
+    final width = MediaQuery.of(context).size.width;
+    final x = details.localPosition.dx;
+    const edge = 0.22;
+
+    if (x < width * edge) {
+      _goToPage(_pageNumber - 1);
+      return true;
+    }
+    if (x > width * (1 - edge)) {
+      _goToPage(_pageNumber + 1);
+      return true;
+    }
+
+    setState(() => _chromeVisible = !_chromeVisible);
+    return true;
   }
 
   @override
@@ -80,64 +171,48 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
             Positioned.fill(
               child: PdfViewer.file(
                 path,
+                controller: _controller,
                 // pdfrx numbers pages from 1, and so does the database.
                 initialPageNumber: book.lastPage,
                 params: PdfViewerParams(
                   backgroundColor: Paper.ground,
+                  margin: 16,
+                  layoutPages: layoutPagesHorizontally,
+                  // maxPagesVisible: 1 makes "fit one page" the furthest you
+                  // can zoom out, so a page always fills the screen.
+                  sizeDelegateProvider:
+                      const PdfViewerSizeDelegateProviderSmart(
+                        maxPagesVisible: 1,
+                      ),
+                  onViewerReady: (document, controller) {
+                    _fitZoom = controller.currentZoom;
+                  },
+                  // pdfrx's built-in "Select All" paints a selection across
+                  // every page at once. On a book with text-free pages — 46 of
+                  // the 137 in the sample book — it asks an empty fragment list
+                  // for its last element and brings down the painter. Take the
+                  // item off the menu until Phase 4 replaces this toolbar.
+                  customizeContextMenuItems: (params, items) {
+                    items.removeWhere(
+                      (item) => item.type == ContextMenuButtonType.selectAll,
+                    );
+                  },
                   onPageChanged: _onPageChanged,
+                  onInteractionEnd: _snapToNearestPage,
+                  onGeneralTap: _onTap,
                 ),
               ),
             ),
-            // The page is the whole screen; the only chrome is a way back.
-            Positioned(
-              left: 4,
-              top: MediaQuery.of(context).padding.top + 2,
-              child: _BackButton(title: book.title),
+            ReaderChrome(
+              visible: _chromeVisible,
+              title: book.title,
+              pageNumber: _pageNumber,
+              pageCount: _pageCount,
+              onSeek: _goToPage,
             ),
           ],
         );
       },
-    );
-  }
-}
-
-class _BackButton extends StatelessWidget {
-  const _BackButton({required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white.withValues(alpha: 0.82),
-      shape: const StadiumBorder(),
-      child: InkWell(
-        customBorder: const StadiumBorder(),
-        onTap: () => Navigator.of(context).pop(),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(9, 7, 15, 7),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.chevron_left, size: 20, color: Paper.ink),
-              const SizedBox(width: 2),
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 190),
-                child: Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Paper.ink,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

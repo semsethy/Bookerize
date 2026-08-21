@@ -49,6 +49,10 @@ project get built. This means:
    before touching the page-turn implementation.
 3. **Long-press on a page with no text must fail silently.** 46 of 137 pages in the sample
    book are illustrations. An error toast there would feel broken.
+4. **Never re-enable pdfrx's built-in "Select All".** It paints a selection across every page
+   at once, and on a page with no text it asks an empty fragment list for its last element and
+   brings down the painter. `lib/reader/reader_screen.dart` strips it from the context menu.
+   Same root cause as #3: this book is a third pictures.
 
 ## Architecture at a glance
 
@@ -95,6 +99,7 @@ Do **not** add `drift_flutter` — it pulls `sqlite3_flutter_libs` *and* `sqlcip
 flutter run -d iphone        # run on iOS Simulator
 flutter analyze              # static analysis — run before committing
 flutter test                 # unit tests
+flutter test integration_test -d <device-id>   # on-device tests (real gestures)
 dart format .                # format
 dart run build_runner build  # regenerate Drift code after changing a table
 cd proxy && npx wrangler dev  # run the proxy locally (Phase 5+)
