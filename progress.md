@@ -7,15 +7,32 @@ picked up on any machine.
 
 ## 🔖 Resume here
 
-> **Current phase:** Phase 5 🟡 nearly done — **blocked on Gemini free quota**
-> **The proxy is live** (address in `proxy/.local-url`, gitignored) and has produced real
-> answers (verified by curl). The app reaches it, and error paths display correctly.
-> **Not yet seen:** a real answer rendered *in the card*. The free tier allows 20 requests a
-> day and testing used them up before the gzip fix landed. Retry after the quota resets, or
-> after enabling billing. Run the app with the two `--dart-define`s in `proxy/README.md`;
-> the device token is in `proxy/.local-token` (gitignored).
-> **Blocked on:** Gemini quota only. Nothing else is outstanding.
-> ⚠️ Still unconfirmed: that a real finger selects text (needed for "Explain a sentence").
+> **Current phase:** Phase 5 🟡 all but confirmed → **Phase 6 (notes and backgrounds)** next
+>
+> **Two small things to check first — both need a human, neither needs code:**
+> 1. **Does a real finger select text?** Run the app, drag across a sentence, and look for
+>    selection handles and a toolbar with Copy · Highlight · Note · Explain. No automated test
+>    can reach pdfrx's selection (proven: a bare viewer with no config of ours selects nothing
+>    under the harness either). Phase 6's highlighting and Phase 5's "Explain" both sit on it.
+> 2. **Does an answer appear in the card?** Long-press a word → "What does it mean here?".
+>    The proxy is live and has produced real answers via curl, but the Gemini free tier is
+>    **20 requests a day** and 2026-08-21's were spent testing. Should work on any later day.
+>
+> **Then start Phase 6:** highlights anchored to text ranges, a notes list per book, and the
+> paper/sepia/night reading grounds. The first half needs no decisions. The second half needs
+> one answer from Sethy: what "a subtle animation" in the background should actually be —
+> still paper grain, a gradient drifting over minutes, or something that reacts to a page turn.
+>
+> **Running the app with the AI features on:**
+> ```
+> flutter run -d iphone \
+>   --dart-define=BOOKERIZE_PROXY_URL=$(cat proxy/.local-url) \
+>   --dart-define=BOOKERIZE_TOKEN=$(cat proxy/.local-token)
+> ```
+> Both files are gitignored and exist only on Sethy's Mac. Without them the app still runs;
+> the dictionary works and the AI features say so quietly.
+>
+> **Blocked on:** nothing.
 
 ### Where the work is
 
@@ -23,8 +40,9 @@ Pushed to **https://github.com/semsethy/Bookerize** (public) through Phase 5.
 The Worker address, the device token and the sample book are all gitignored, so a fresh clone
 needs: a PDF in `assets/books/`, and the two `--dart-define`s for the AI features.
 
-`design/product-design.html` is deliberately **untracked** — the product design walkthrough,
-kept local until it is worth publishing.
+`design/product-design.html` is the product design walkthrough — every screen and the
+behaviour rules behind them. Committed by Sethy in `cbf7a62`. Open it in a browser, or
+publish it as an artifact to scroll through it.
 
 ### How to resume on a new laptop
 
