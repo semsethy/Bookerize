@@ -8,7 +8,7 @@ picked up on any machine.
 ## 🔖 Resume here
 
 > **Current phase:** Phase 5 🟡 nearly done — **blocked on Gemini free quota**
-> **The proxy is live** at `https://bookerize-proxy.sethy.workers.dev` and has produced real
+> **The proxy is live** (address in `proxy/.local-url`, gitignored) and has produced real
 > answers (verified by curl). The app reaches it, and error paths display correctly.
 > **Not yet seen:** a real answer rendered *in the card*. The free tier allows 20 requests a
 > day and testing used them up before the gzip fix landed. Retry after the quota resets, or
@@ -167,7 +167,8 @@ Append here whenever a choice is made, so the reasoning survives context resets.
 Newest first. One entry per working session.
 
 ### 2026-08-21 — Phase 5 (part 2): the proxy is live, and it works
-- Deployed to `https://bookerize-proxy.sethy.workers.dev`. Secrets are set; the Gemini key was
+- Deployed to Cloudflare Workers. The address is kept in `proxy/.local-url` rather than here,
+  since this repo is public; a token is required either way. Secrets are set; the Gemini key was
   entered through the Cloudflare dashboard so it never touched a terminal or this repo. The
   device token lives in `proxy/.local-token` (gitignored) and was piped into the secret
   without ever being printed.

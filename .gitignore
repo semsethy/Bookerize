@@ -47,3 +47,4 @@ secrets.dart
 assets/books/*.pdf
 assets/books/*.epub
 proxy/.local-token
+proxy/.local-url
