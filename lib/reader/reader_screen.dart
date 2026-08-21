@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pdfrx/pdfrx.dart';
 
+import '../ai/explain_sheet.dart';
 import '../data/app_database.dart';
 import '../data/providers.dart';
 import '../dictionary/word_card.dart';
@@ -152,16 +153,19 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     return null;
   }
 
-  /// Placeholder for Phase 5: selecting a sentence and asking for it in plain
-  /// words. Says so rather than doing nothing, so a tap never feels broken.
-  void _explainSelection() {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Explaining a sentence arrives in the next phase.'),
-        duration: Duration(seconds: 2),
-      ),
-    );
+  /// Selecting a sentence and asking for it in plainer words.
+  ///
+  /// The selected text comes from pdfrx, so it is exactly what the reader
+  /// dragged over — including the hard wraps a PDF puts mid-sentence, which the
+  /// proxy folds out before asking.
+  Future<void> _explainSelection() async {
+    final selection = _controller.textSelectionDelegate;
+    if (!selection.hasSelectedText) return;
+
+    final sentence = (await selection.getSelectedText()).trim();
+    if (!mounted || sentence.isEmpty) return;
+
+    await ExplainSheet.show(context, sentence);
   }
 
   void _dismissLookup() {

@@ -106,7 +106,11 @@ flutter test integration_test -d <device-id>   # on-device tests (real gestures)
 dart format .                # format
 dart run build_runner build  # regenerate Drift code after changing a table
 python3 tool/build_wordnet.py # rebuild the offline dictionary (rarely needed)
-cd proxy && npx wrangler dev  # run the proxy locally (Phase 5+)
+cd proxy && npm test          # proxy tests — no key or network needed
+cd proxy && npx wrangler dev  # run the proxy locally (needs proxy/.dev.vars)
+
+# Run the app against a deployed proxy (see proxy/README.md):
+flutter run --dart-define=BOOKERIZE_PROXY_URL=... --dart-define=BOOKERIZE_TOKEN=...
 ```
 
 ## Conventions
@@ -120,4 +124,8 @@ cd proxy && npx wrangler dev  # run the proxy locally (Phase 5+)
   iOS renames the app container, so absolute paths go stale
 - Dictionary lookups rank senses by WordNet's **tagged frequency**, never by trying one part
   of speech first — otherwise "are" resolves to a unit of area rather than the verb "be"
+- **Prompts and the model name live in the Worker, never in the app.** Wording is the main
+  lever on answer quality; keeping it server-side makes it a redeploy, not a release
+- Every answer is cached in Drift against the exact question. Never cache an empty or failed
+  answer — that would make one bad moment permanent
 - Commit at the end of each phase with a message naming the phase

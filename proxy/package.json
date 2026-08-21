@@ -1,0 +1,15 @@
+{
+  "name": "bookerize-proxy",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Holds the Gemini API key so the app never has to.",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "node --test test/*.test.js"
+  },
+  "devDependencies": {
+    "wrangler": "^4.125.0"
+  }
+}

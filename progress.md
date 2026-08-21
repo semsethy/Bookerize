@@ -7,13 +7,15 @@ picked up on any machine.
 
 ## 🔖 Resume here
 
-> **Current phase:** Phase 4 ✅ complete → starting **Phase 5 (AI layer + proxy)** ⭐
-> **Next action:** Cloudflare Worker holding the API key, per-device tokens, rate limiting.
-> Then wire the two placeholders that are already on screen: "What does it mean here?" on the
-> word card, and "Explain" on the selection toolbar. Cache every result in Drift.
-> **Blocked on:** A Cloudflare account, and a **Gemini API key** from Google AI Studio.
-> ⚠️ Still unconfirmed: that a real finger selects text (see Phase 3's note). Long-press
-> lookup is proven on device and does *not* depend on it, but "Explain a sentence" does.
+> **Current phase:** Phase 5 🟡 **built but unproven** → needs your accounts to finish
+> **Next action (you):** deploy the proxy and run the app against it — see `proxy/README.md`.
+> Everything is written and tested against a fake Gemini; nothing has yet spoken to the real
+> one. Until it does, treat Phase 5 as unfinished.
+> **Next action (me):** once it's deployed, verify a real answer streams end to end, then
+> Phase 6 (notes and reading backgrounds).
+> **Blocked on:** A Cloudflare account and a Gemini API key.
+> ⚠️ Still unconfirmed: that a real finger selects text. Long-press word lookup does not
+> depend on it; "Explain a sentence" does.
 
 ### How to resume on a new laptop
 
@@ -53,7 +55,7 @@ Claude Code reads `CLAUDE.md` automatically, which points at `PLAN.md` and this 
 | 2 | Library and persistence | ✅ Done | Drift + import + covers; resumes your page |
 | 3 | Full-screen paging | ✅ Done | Horizontal snap paging, built on pdfrx's own hooks |
 | 4 | Text interaction layer | ✅ Done | Word lookup works offline; thresholds measured, not guessed |
-| 5 | AI layer (+ proxy) | ⬜ Not started | Needs Cloudflare account |
+| 5 | AI layer (+ proxy) | 🟡 In progress | Built and tested against a fake; never spoken to real Gemini |
 | 6 | Notes and backgrounds | ⬜ Not started | |
 | 7 | Page curl | ⬜ Not started | Hybrid approach — see PLAN.md §5 |
 | 8 | TestFlight | ⬜ Not started | Needs Apple Developer Program ($99/yr) |
@@ -103,7 +105,8 @@ conflicts. Scratch project deleted afterward.
 
 | Item | Needed at | Status |
 |---|---|---|
-| Cloudflare account + `wrangler` | Phase 5 | ❌ Not set up |
+| Cloudflare account + `wrangler` | Phase 5 | ❌ Not set up. `wrangler` 4.125.0 is installed; the account is not. |
+| Gemini API key | Phase 5 | ❌ Not set up — aistudio.google.com |
 | WordNet dictionary data | Phase 4 | ✅ **Done.** `tool/build_wordnet.py` builds `assets/dictionary/wordnet.sqlite` from Princeton WordNet 3.1: 132,826 senses, 12.3 MB, committed. Licence in `assets/dictionary/WORDNET_LICENSE.txt`. |
 | Apple Developer Program ($99/yr) | Phase 8 | ❌ Not enrolled. Simulator work needs nothing. |
 
@@ -146,12 +149,44 @@ Append here whenever a choice is made, so the reasoning survives context resets.
 | 2026-08-21 | Commit the 12.3 MB dictionary | Same reason as the generated Drift code: a fresh clone has to build without first running a script that downloads 16 MB from Princeton. |
 | 2026-08-21 | Word card rises from the bottom, not over the word | A popover covers the sentence you were reading and sits where your thumb isn't. Settled in the design review and now built. |
 | 2026-08-21 | **Gemini instead of Claude** — `gemini-3.6-flash`, streaming | Owner's choice. Cost nothing to change: Phase 5 had not started, and no code referenced a provider. Also ~7x cheaper per explanation (~650 per dollar against ~100), and Gemini has a free tier that may cover a group this size outright. The proxy stays — that reasoning never depended on the provider. |
+| 2026-08-21 | **Prompts and model name live in the Worker, not the app** | Wording is the main lever on answer quality. Server-side, changing it is a redeploy; in the app it is an App Store review. It also means the app has no idea which provider it is talking to — switching again would cost one file. |
+| 2026-08-21 | Proxy flattens Gemini's SSE to `{"text":...}` / `[DONE]` | Gemini emits five event types per answer. The app should not have to know that, and would break if it changed. |
+| 2026-08-21 | Errors are reported *inside* the stream | By the time an answer fails, the HTTP status has already gone out. A mid-stream `{"error":...}` is the only way to say so. |
+| 2026-08-21 | Never cache an empty or failed answer | Otherwise one bad moment becomes permanent, and the reader can never ask again. |
+| 2026-08-21 | Config via `--dart-define`, not a settings screen | Keeps every secret out of the repo and off disk. A proper token-entry screen is Phase 8 work, when friends actually need to enter one. |
+| 2026-08-21 | Rate limit via Cloudflare's native binding, not KV | No namespace to create, no write quota to burn, and it keys on the device token rather than an IP. |
 
 ---
 
 ## Session log
 
 Newest first. One entry per working session.
+
+### 2026-08-21 — Phase 5 (part 1): the AI layer, built but unproven ⭐
+- `proxy/` — a Cloudflare Worker holding the Gemini key. Two endpoints, per-token auth with a
+  constant-time check, native rate limiting, input caps, and a `max_output_tokens` ceiling so
+  no single request can run away.
+- `lib/ai/ai_client.dart` — streams the answer as it arrives; every failure has a message
+  written for a reader rather than a developer.
+- `lib/ai/explainer.dart` — asks once, ever. Answers are cached in Drift against the exact
+  question, so a second look is instant, free, and works with no signal.
+- Schema v1 → v2 for the cache, with a migration test proving a v1 library keeps its books
+  **and its page**.
+- Both placeholders are now real: "What does it mean here?" streams into the word card, and
+  "Explain" opens a sheet with the author's sentence above the plainer version.
+- 72 unit tests + 4 on-device tests + 32 proxy tests. Analyze clean, preflight green.
+
+**Checked the wire format instead of trusting memory.** Gemini's `generateContent` is now
+legacy; the Interactions API went GA in June 2026 and is what new projects should use. The
+request and SSE event shapes came from the current docs, not from recall — getting this wrong
+would have meant a Phase 5 that silently never worked.
+
+**⚠️ Nothing here has spoken to the real Gemini API.** Everything is tested against a fake:
+the proxy against a stub upstream, the client against a real local socket serving real SSE.
+That covers parsing, auth, caching, failure messages and the offline path — but not whether
+Google accepts our request body. **Phase 5 is not done until a real answer streams into the
+card.** Verified for now: with no proxy configured, the reader sees one quiet line where the
+button would be, and the dictionary carries on working.
 
 ### 2026-08-21 — Phase 4: text interaction layer ⭐
 - **Built the offline dictionary.** `tool/build_wordnet.py` downloads Princeton WordNet 3.1

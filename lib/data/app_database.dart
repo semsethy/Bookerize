@@ -41,7 +41,28 @@ class Books extends Table {
   DateTimeColumn get lastOpenedAt => dateTime().nullable()();
 }
 
-@DriftDatabase(tables: [Books])
+/// Every answer the model has ever given, keyed by exactly what was asked.
+///
+/// Nothing is ever asked twice. A second look at the same word in the same
+/// sentence is instant, free, and works with no signal — which is most of what
+/// makes the feature feel cheap to use rather than something to ration.
+class Explanations extends Table {
+  /// `kind|word|sentence` — the whole question, so a different sentence is a
+  /// different answer even for the same word.
+  TextColumn get id => text()();
+
+  /// `word` or `sentence`.
+  TextColumn get kind => text()();
+
+  TextColumn get answer => text()();
+
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@DriftDatabase(tables: [Books, Explanations])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
@@ -49,7 +70,17 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onCreate: (m) => m.createAll(),
+    onUpgrade: (m, from, to) async {
+      // v2 added the explanation cache. Existing readers keep their books and
+      // their place; they just start with an empty cache.
+      if (from < 2) await m.createTable(explanations);
+    },
+  );
 
   /// Most recently read first; never-opened books fall back to when they were added.
   ///
@@ -87,6 +118,28 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> deleteBook(int id) =>
       (delete(books)..where((b) => b.id.equals(id))).go();
+
+  Future<String?> cachedAnswer(String id) async {
+    final row = await (select(
+      explanations,
+    )..where((e) => e.id.equals(id))).getSingleOrNull();
+    return row?.answer;
+  }
+
+  Future<void> cacheAnswer({
+    required String id,
+    required String kind,
+    required String answer,
+  }) {
+    return into(explanations).insertOnConflictUpdate(
+      ExplanationsCompanion.insert(
+        id: id,
+        kind: kind,
+        answer: answer,
+        createdAt: DateTime.now(),
+      ),
+    );
+  }
 }
 
 QueryExecutor _openConnection() {

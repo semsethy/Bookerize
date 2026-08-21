@@ -31,6 +31,8 @@ android/app/release/
 .env.*
 *.pem
 proxy/.dev.vars
+proxy/node_modules/
+proxy/.wrangler/
 secrets.dart
 
 # macOS

@@ -1,0 +1,4 @@
+# Copy to .dev.vars for local `wrangler dev`. .dev.vars is gitignored.
+# Never commit real values.
+GEMINI_API_KEY=your-key-from-aistudio.google.com
+ALLOWED_TOKENS=some-long-random-string,another-for-a-second-device

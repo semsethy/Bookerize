@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../ai/explainer.dart';
 import '../dictionary/dictionary.dart';
 import 'app_database.dart';
 import 'book_repository.dart';
@@ -32,6 +33,11 @@ final startupProvider = FutureProvider<void>((ref) async {
   await repo.seedBundledBooks();
   // Get the dictionary out of the app bundle now rather than on first press.
   await ref.watch(dictionaryProvider.future);
+});
+
+/// Asks the model, through the proxy, and remembers every answer.
+final explainerProvider = Provider<Explainer>((ref) {
+  return Explainer(database: ref.watch(databaseProvider));
 });
 
 /// A live view of the shelf. Because it's a Stream from Drift, importing a book

@@ -1,0 +1,26 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "bookerize-proxy",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-01",
+  "observability": { "enabled": true },
+
+  // Per-token rate limiting, so one device cannot run up the bill.
+  // Backed by Cloudflare's own limiter — no KV namespace to create.
+  "ratelimits": [
+    {
+      "name": "RATE_LIMITER",
+      "namespace_id": "1001",
+      "simple": { "limit": 20, "period": 60 }
+    }
+  ],
+
+  "vars": {
+    // Changing the model is a config edit and a redeploy — no app update.
+    "GEMINI_MODEL": "gemini-3.6-flash"
+  }
+
+  // Secrets are NEVER in this file. Set them with:
+  //   npx wrangler secret put GEMINI_API_KEY
+  //   npx wrangler secret put ALLOWED_TOKENS
+}

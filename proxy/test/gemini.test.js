@@ -1,0 +1,85 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+
+import { createSseParser, textFromRecord } from '../src/gemini.js';
+
+test('parses one complete SSE record', () => {
+  const parse = createSseParser();
+  const records = parse('event: step.delta\ndata: {"delta":{"type":"text","text":"hi"}}\n\n');
+
+  assert.equal(records.length, 1);
+  assert.equal(records[0].event, 'step.delta');
+});
+
+test('waits for a record split across chunk boundaries', () => {
+  // The network splits wherever it likes; half a JSON payload must not be parsed.
+  const parse = createSseParser();
+
+  assert.deepEqual(parse('event: step.delta\ndata: {"delta":{"type":'), []);
+  assert.deepEqual(parse('"text","text":"split"}}'), []);
+
+  const records = parse('\n\n');
+  assert.equal(records.length, 1);
+  assert.equal(textFromRecord(records[0]), 'split');
+});
+
+test('handles several records arriving in one chunk', () => {
+  const parse = createSseParser();
+  const records = parse(
+    'event: step.delta\ndata: {"delta":{"type":"text","text":"a"}}\n\n' +
+      'event: step.delta\ndata: {"delta":{"type":"text","text":"b"}}\n\n',
+  );
+
+  assert.deepEqual(records.map(textFromRecord), ['a', 'b']);
+});
+
+test('extracts text only from content events', () => {
+  const ignored = [
+    { event: 'interaction.created', data: '{"interaction":{"id":"v1_x"}}' },
+    { event: 'step.start', data: '{"index":1,"step":{"type":"model_output"}}' },
+    { event: 'step.stop', data: '{"index":1}' },
+    { event: 'interaction.completed', data: '{"interaction":{"status":"completed"}}' },
+    { event: 'done', data: '[DONE]' },
+  ];
+
+  for (const record of ignored) {
+    assert.equal(textFromRecord(record), null, `${record.event} should carry no text`);
+  }
+});
+
+test('ignores a non-text delta', () => {
+  // Interactions can stream things that are not prose; we only forward text.
+  const record = { event: 'step.delta', data: '{"delta":{"type":"thought","text":"..."}}' };
+  assert.equal(textFromRecord(record), null);
+});
+
+test('malformed JSON is skipped rather than thrown', () => {
+  assert.equal(textFromRecord({ event: 'step.delta', data: '{not json' }), null);
+});
+
+test('an empty text delta is not forwarded', () => {
+  const record = { event: 'step.delta', data: '{"delta":{"type":"text","text":""}}' };
+  assert.equal(textFromRecord(record), null);
+});
+
+test('a realistic stream reassembles into the full answer', () => {
+  const parse = createSseParser();
+  const stream = [
+    'event: interaction.created\ndata: {"interaction":{"id":"v1_a"},"event_type":"interaction.created"}\n\n',
+    'event: step.start\ndata: {"index":1,"step":{"type":"model_output"},"event_type":"step.start"}\n\n',
+    'event: step.delta\ndata: {"index":1,"delta":{"text":"It means ","type":"text"},"event_type":"step.delta"}\n\n',
+    'event: step.delta\ndata: {"index":1,"delta":{"text":"give and take.","type":"text"},"event_type":"step.delta"}\n\n',
+    'event: step.stop\ndata: {"index":1,"event_type":"step.stop"}\n\n',
+    'event: done\ndata: [DONE]\n\n',
+  ];
+
+  let answer = '';
+  for (const chunk of stream) {
+    for (const record of parse(chunk)) {
+      const text = textFromRecord(record);
+      if (text !== null) answer += text;
+    }
+  }
+
+  assert.equal(answer, 'It means give and take.');
+});
