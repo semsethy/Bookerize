@@ -1,0 +1,1641 @@
+<title>Bookerize Product Design</title>
+
+<style>
+  /* ============================================================
+     TOKENS
+     Light palette on bare :root. Dark redefines tokens only.
+     Paper tokens are deliberately constant — the phone shows the
+     APP's theme, which is independent of this page's theme.
+     ============================================================ */
+  :root {
+    --ground:      #DDE0E6;
+    --ground-deep: #CFD4DC;
+    --surface:     #F4F5F7;
+    --ink:         #131721;
+    --slate:       #4E5665;
+    --slate-soft:  #7C8494;
+    --rule:        #C3C9D3;
+    --pen:         #2C55A6;
+    --pen-soft:    #E3E9F5;
+    --marker:      #E3B23C;
+    --shadow:      0 24px 60px -28px rgba(19, 23, 33, .45);
+
+    /* App-internal (constant across page themes) */
+    --paper:       #FAF7F1;
+    --paper-ink:   #1B1915;
+    --paper-soft:  #6E6559;
+    --paper-rule:  #E2DACB;
+    --chrome:      #14161B;
+    --app-pen:      #2C55A6;   /* app accent — constant, never theme-swapped */
+    --app-pen-soft: #DCE6F8;
+    --app-mark:     #E3B23C;
+
+    --f-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, "Helvetica Neue", sans-serif;
+    --f-book: Georgia, "Iowan Old Style", "Times New Roman", serif;
+    --f-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+    --phone-scale: .84;
+    --measure: 62ch;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:      #0E1116;
+      --ground-deep: #080A0E;
+      --surface:     #161A21;
+      --ink:         #E5E8EE;
+      --slate:       #97A0AE;
+      --slate-soft:  #737C8B;
+      --rule:        #262C36;
+      --pen:         #86A8EC;
+      --pen-soft:    #1A2130;
+      --marker:      #E8C05A;
+      --shadow:      0 24px 60px -28px rgba(0, 0, 0, .8);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground:      #0E1116;
+    --ground-deep: #080A0E;
+    --surface:     #161A21;
+    --ink:         #E5E8EE;
+    --slate:       #97A0AE;
+    --slate-soft:  #737C8B;
+    --rule:        #262C36;
+    --pen:         #86A8EC;
+    --pen-soft:    #1A2130;
+    --marker:      #E8C05A;
+    --shadow:      0 24px 60px -28px rgba(0, 0, 0, .8);
+  }
+
+  /* ============================================================
+     BASE
+     ============================================================ */
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--f-ui);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--pen);
+    outline-offset: 3px;
+    border-radius: 3px;
+  }
+
+  .wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 28px;
+  }
+
+  .eyebrow {
+    font-family: var(--f-mono);
+    font-size: 11px;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--slate-soft);
+    margin: 0;
+  }
+
+  /* ============================================================
+     MASTHEAD
+     ============================================================ */
+  .masthead {
+    padding: 84px 0 56px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .masthead h1 {
+    font-size: clamp(52px, 9vw, 96px);
+    line-height: .92;
+    letter-spacing: -.035em;
+    font-weight: 800;
+    margin: 18px 0 0;
+    text-wrap: balance;
+  }
+
+  .masthead h1 .dot { color: var(--pen); }
+
+  .lede {
+    font-family: var(--f-book);
+    font-size: clamp(20px, 2.4vw, 26px);
+    line-height: 1.45;
+    color: var(--ink);
+    max-width: 30ch;
+    margin: 26px 0 0;
+    text-wrap: balance;
+  }
+
+  .mast-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 34px;
+    margin-top: 38px;
+    padding-top: 22px;
+    border-top: 1px solid var(--rule);
+    font-family: var(--f-mono);
+    font-size: 12px;
+    letter-spacing: .04em;
+    color: var(--slate);
+  }
+
+  .mast-meta b {
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  /* ============================================================
+     WALKTHROUGH — sticky phone + scrolling notes
+     ============================================================ */
+  .walk {
+    display: grid;
+    grid-template-columns: minmax(0, 400px) minmax(0, 1fr);
+    gap: 72px;
+    padding: 64px 0 40px;
+    align-items: start;
+  }
+
+  .stage {
+    position: sticky;
+    top: 32px;
+    align-self: start;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .stage-foot {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-height: 30px;
+  }
+
+  .screen-name {
+    font-family: var(--f-mono);
+    font-size: 11px;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--slate-soft);
+  }
+
+  .replay {
+    font-family: var(--f-mono);
+    font-size: 11px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--pen);
+    background: transparent;
+    border: 1px solid var(--rule);
+    border-radius: 100px;
+    padding: 5px 13px;
+    cursor: pointer;
+    visibility: hidden;
+    transition: background .15s, border-color .15s;
+  }
+
+  .replay:hover { background: var(--pen-soft); border-color: var(--pen); }
+  .stage[data-animated="yes"] .replay { visibility: visible; }
+
+  /* --- steps column --- */
+  .steps {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .step {
+    padding: 46px 0 46px 62px;
+    position: relative;
+    border-top: 1px solid var(--rule);
+  }
+
+  .steps > .step:first-child { border-top: 0; }
+
+  .step::before {
+    content: attr(data-n);
+    position: absolute;
+    left: 0;
+    top: 48px;
+    font-family: var(--f-mono);
+    font-size: 12px;
+    letter-spacing: .06em;
+    color: var(--slate-soft);
+    border: 1px solid var(--rule);
+    border-radius: 100px;
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    background: var(--ground);
+    transition: color .25s, border-color .25s, background .25s;
+  }
+
+  .step.on::before {
+    color: #fff;
+    background: var(--pen);
+    border-color: var(--pen);
+  }
+
+  .step h2 {
+    font-size: clamp(26px, 3.2vw, 34px);
+    line-height: 1.15;
+    letter-spacing: -.022em;
+    font-weight: 700;
+    margin: 0 0 16px;
+    max-width: 22ch;
+    text-wrap: balance;
+  }
+
+  .step p {
+    margin: 0 0 14px;
+    max-width: var(--measure);
+    color: var(--slate);
+  }
+
+  .step p strong { color: var(--ink); font-weight: 600; }
+
+  .step p:last-child { margin-bottom: 0; }
+
+  .rule-note {
+    margin-top: 18px;
+    padding: 14px 18px;
+    background: var(--surface);
+    border-left: 2px solid var(--marker);
+    border-radius: 0 6px 6px 0;
+    max-width: var(--measure);
+  }
+
+  .rule-note p { margin: 0; font-size: 15px; }
+
+  .rule-note .tag {
+    display: block;
+    font-family: var(--f-mono);
+    font-size: 10px;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--slate-soft);
+    margin-bottom: 5px;
+  }
+
+  /* ============================================================
+     THE PHONE
+     ============================================================ */
+  .phone {
+    width: 393px;
+    height: 852px;
+    flex: none;
+    background: var(--chrome);
+    border-radius: 56px;
+    padding: 11px;
+    box-shadow: var(--shadow), 0 0 0 1px rgba(0,0,0,.35);
+    transform: scale(var(--phone-scale));
+    transform-origin: top center;
+    margin-bottom: calc(852px * var(--phone-scale) - 852px);
+  }
+
+  .screen {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border-radius: 46px;
+    overflow: hidden;
+    background: var(--paper);
+    font-size: 15px;
+  }
+
+  .view {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity .3s ease;
+  }
+
+  .phone[data-screen="library"] .v-library,
+  .phone[data-screen="notes"]   .v-notes { opacity: 1; visibility: visible; }
+
+  .phone:is([data-screen="read"], [data-screen="turn"], [data-screen="word"],
+            [data-screen="context"], [data-screen="select"], [data-screen="explain"],
+            [data-screen="illo"], [data-screen="themes"], [data-screen="offline"]) .v-reader {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  /* --- status bar --- */
+  .statusbar {
+    height: 54px;
+    padding: 16px 30px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -.01em;
+    position: relative;
+    z-index: 6;
+  }
+
+  .statusbar .icons { display: flex; align-items: center; gap: 6px; }
+  .statusbar svg { display: block; }
+
+  /* ---------- LIBRARY ---------- */
+  .v-library { background: var(--paper); color: var(--paper-ink); display: flex; flex-direction: column; }
+
+  .lib-head {
+    padding: 8px 26px 18px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+  }
+
+  .lib-head h3 {
+    margin: 0;
+    font-size: 32px;
+    letter-spacing: -.028em;
+    font-weight: 700;
+  }
+
+  .lib-add {
+    width: 34px; height: 34px;
+    border-radius: 100px;
+    background: var(--paper-ink);
+    color: var(--paper);
+    display: grid; place-items: center;
+    font-size: 20px; font-weight: 400;
+    line-height: 1;
+    padding-bottom: 2px;
+  }
+
+  .shelf {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 26px 20px;
+    padding: 4px 26px 26px;
+    overflow: hidden;
+  }
+
+  .book { display: flex; flex-direction: column; gap: 9px; }
+
+  .cover {
+    aspect-ratio: 3 / 4.2;
+    border-radius: 4px;
+    padding: 14px 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-shadow: 0 8px 18px -8px rgba(0,0,0,.45), 0 0 0 1px rgba(0,0,0,.07);
+    overflow: hidden;
+  }
+
+  .cover .ct {
+    font-size: 15px;
+    font-weight: 800;
+    line-height: 1.02;
+    letter-spacing: -.02em;
+    text-transform: uppercase;
+  }
+
+  .cover .ca {
+    font-size: 8.5px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    opacity: .72;
+  }
+
+  .cv-1 { background: #17181C; color: #fff; }
+  .cv-1 .ct em { font-style: normal; color: var(--app-mark); }
+  .cv-2 { background: #EFE7D6; color: #2A2418; }
+  .cv-2 .ct { font-family: var(--f-book); text-transform: none; font-weight: 400; font-size: 17px; line-height: 1.12; }
+  .cv-3 { background: #23417E; color: #EAF0FB; }
+  .cv-4 { background: #F3F1EC; color: #3B3830; }
+  .cv-4 .ct { font-family: var(--f-book); text-transform: none; font-weight: 400; font-size: 16px; }
+
+  .book b {
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.25;
+    letter-spacing: -.01em;
+  }
+
+  .prog {
+    height: 3px;
+    background: var(--paper-rule);
+    border-radius: 100px;
+    overflow: hidden;
+  }
+
+  .prog i { display: block; height: 100%; background: var(--paper-ink); }
+  .prog.done i { background: var(--app-mark); }
+
+  .book small {
+    font-size: 10px;
+    letter-spacing: .04em;
+    color: var(--paper-soft);
+    font-family: var(--f-mono);
+  }
+
+  /* ---------- READER ---------- */
+  .v-reader { background: var(--paper); color: var(--paper-ink); display: flex; flex-direction: column; }
+
+  .v-reader .statusbar { color: var(--paper-ink); opacity: .55; }
+
+  .page {
+    flex: 1;
+    padding: 6px 34px 0;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .prose {
+    font-family: var(--f-book);
+    font-size: 17.5px;
+    line-height: 1.62;
+    letter-spacing: .002em;
+    color: var(--paper-ink);
+  }
+
+  .prose p { margin: 0 0 20px; }
+  .prose .drop { font-size: 20px; }
+
+  .para-wrap { position: relative; }
+
+  .pagenum {
+    margin-top: auto;
+    padding: 0 0 26px;
+    text-align: center;
+    font-family: var(--f-book);
+    font-size: 12px;
+    color: var(--paper-soft);
+    letter-spacing: .08em;
+  }
+
+  /* resume pill */
+  .resume {
+    position: absolute;
+    left: 50%;
+    top: 8px;
+    transform: translateX(-50%);
+    background: rgba(20,22,27,.92);
+    color: #fff;
+    font-size: 11.5px;
+    letter-spacing: .02em;
+    padding: 7px 15px;
+    border-radius: 100px;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity .3s;
+    z-index: 5;
+  }
+
+  .phone[data-screen="read"] .resume { opacity: 1; }
+
+  /* word marker */
+  .wt {
+    border-radius: 2px;
+    padding: 1px 2px;
+    margin: 0 -2px;
+    transition: background .25s, box-shadow .25s;
+  }
+
+  .phone:is([data-screen="word"], [data-screen="context"], [data-screen="offline"]) .wt {
+    background: var(--app-pen-soft);
+    box-shadow: 0 1.5px 0 var(--app-pen);
+  }
+
+  /* sentence selection */
+  .sel { background: transparent; color: inherit; transition: background .25s; border-radius: 2px; }
+
+  .phone:is([data-screen="select"], [data-screen="explain"]) .sel {
+    background: rgba(227, 178, 60, .42);
+    box-shadow: 0 0 0 1px rgba(227, 178, 60, .55);
+  }
+
+  /* selection toolbar */
+  .seltool {
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 10px);
+    transform: translateX(-50%) translateY(6px);
+    display: flex;
+    background: #1E2027;
+    border-radius: 9px;
+    overflow: hidden;
+    box-shadow: 0 10px 24px -8px rgba(0,0,0,.5);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity .25s, transform .25s;
+    z-index: 5;
+  }
+
+  .phone[data-screen="select"] .seltool {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  .seltool span {
+    color: #fff;
+    font-size: 12.5px;
+    padding: 9px 14px;
+    white-space: nowrap;
+    border-right: 1px solid rgba(255,255,255,.13);
+  }
+
+  .seltool span:last-child { border-right: 0; color: var(--app-mark); font-weight: 600; }
+
+  /* ---------- bottom cards ---------- */
+  .card {
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    background: rgba(252, 251, 249, .96);
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+    border-radius: 26px;
+    padding: 20px 22px 24px;
+    box-shadow: 0 -2px 40px -10px rgba(0,0,0,.35), 0 0 0 1px rgba(0,0,0,.06);
+    transform: translateY(112%);
+    transition: transform .38s cubic-bezier(.22,.9,.3,1);
+    z-index: 7;
+  }
+
+  .grabber {
+    width: 36px; height: 4px;
+    border-radius: 100px;
+    background: #CFC8BB;
+    margin: -6px auto 14px;
+  }
+
+  .phone:is([data-screen="word"], [data-screen="context"], [data-screen="offline"]) .card-word,
+  .phone[data-screen="explain"] .card-explain,
+  .phone[data-screen="themes"] .card-themes { transform: translateY(0); }
+
+  .cw-head {
+    display: flex;
+    align-items: baseline;
+    gap: 9px;
+    margin-bottom: 3px;
+  }
+
+  .cw-head h4 {
+    margin: 0;
+    font-family: var(--f-book);
+    font-size: 25px;
+    letter-spacing: -.015em;
+    font-weight: 400;
+    color: var(--paper-ink);
+  }
+
+  .pos {
+    font-family: var(--f-book);
+    font-style: italic;
+    font-size: 14px;
+    color: var(--paper-soft);
+  }
+
+  .src {
+    margin-left: auto;
+    font-family: var(--f-mono);
+    font-size: 9px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--paper-soft);
+    border: 1px solid var(--paper-rule);
+    border-radius: 100px;
+    padding: 3px 8px;
+  }
+
+  .gloss {
+    font-family: var(--f-book);
+    font-size: 15.5px;
+    line-height: 1.5;
+    color: #3A352C;
+    margin: 8px 0 0;
+  }
+
+  .card-div {
+    height: 1px;
+    background: var(--paper-rule);
+    margin: 17px 0 15px;
+  }
+
+  .ask {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    background: var(--app-pen);
+    color: #fff;
+    border: 0;
+    border-radius: 13px;
+    padding: 13px 16px;
+    font-family: var(--f-ui);
+    font-size: 14.5px;
+    font-weight: 600;
+    letter-spacing: -.01em;
+    cursor: default;
+  }
+
+  .ask .spark { font-size: 13px; }
+
+  .in-context { display: none; }
+  .phone[data-screen="context"] .in-context { display: block; }
+  .phone[data-screen="context"] .ask { display: none; }
+
+  .ic-label {
+    font-family: var(--f-mono);
+    font-size: 9.5px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--app-pen);
+    margin-bottom: 7px;
+  }
+
+  .stream {
+    font-family: var(--f-book);
+    font-size: 15.5px;
+    line-height: 1.52;
+    color: #3A352C;
+    min-height: 4.6em;
+    margin: 0;
+  }
+
+  .caret {
+    display: inline-block;
+    width: 2px;
+    height: 1em;
+    background: var(--app-pen);
+    vertical-align: -2px;
+    margin-left: 1px;
+    animation: blink 1s steps(2, start) infinite;
+  }
+
+  .caret.off { display: none; }
+
+  @keyframes blink { to { visibility: hidden; } }
+
+  /* offline row */
+  .offrow { display: none; align-items: center; gap: 9px; }
+  .phone[data-screen="offline"] .offrow { display: flex; }
+  .phone[data-screen="offline"] .ask { display: none; }
+
+  .offrow p {
+    margin: 0;
+    font-size: 13.5px;
+    line-height: 1.4;
+    color: var(--paper-soft);
+  }
+
+  .offrow .dotmark {
+    width: 7px; height: 7px; flex: none;
+    border-radius: 100px;
+    background: var(--paper-soft);
+  }
+
+  /* explain sheet */
+  .card-explain { padding-bottom: 26px; }
+
+  .ce-quote {
+    font-family: var(--f-book);
+    font-size: 14px;
+    line-height: 1.45;
+    color: var(--paper-soft);
+    border-left: 2px solid var(--app-mark);
+    padding-left: 12px;
+    margin: 0 0 15px;
+  }
+
+  /* themes sheet */
+  .card-themes h5 {
+    margin: 0 0 14px;
+    font-size: 16px;
+    letter-spacing: -.015em;
+    color: var(--paper-ink);
+  }
+
+  .swatches { display: flex; gap: 11px; }
+
+  .sw {
+    flex: 1;
+    border-radius: 13px;
+    height: 74px;
+    display: grid;
+    place-items: center;
+    font-family: var(--f-book);
+    font-size: 13px;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,.09);
+  }
+
+  .sw-paper { background: #FAF7F1; color: #1B1915; }
+  .sw-sepia { background: #EFE0C4; color: #43331B; }
+  .sw-night { background: #15171B; color: #C9CCD2; box-shadow: inset 0 0 0 1px rgba(255,255,255,.12); }
+  .sw.on { box-shadow: inset 0 0 0 2px var(--app-pen); }
+
+  .grain-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 16px;
+    font-size: 14px;
+    color: var(--paper-ink);
+  }
+
+  .toggle {
+    width: 44px; height: 26px;
+    border-radius: 100px;
+    background: #34C759;
+    position: relative;
+  }
+
+  .toggle::after {
+    content: "";
+    position: absolute;
+    top: 2px; right: 2px;
+    width: 22px; height: 22px;
+    border-radius: 100px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,.3);
+  }
+
+  /* sepia / night reading grounds */
+  .phone[data-screen="themes"] .v-reader { --paper: #EFE0C4; --paper-ink: #43331B; --paper-soft: #8A7454; }
+
+  /* ---------- illustration page ---------- */
+  .illo { display: none; flex: 1; padding: 0; flex-direction: column; }
+  .phone[data-screen="illo"] .illo { display: flex; }
+  .phone[data-screen="illo"] .page { display: none; }
+
+  .illo-art {
+    flex: 1;
+    margin: 40px 30px 0;
+    border-radius: 3px;
+    background:
+      radial-gradient(circle at 32% 38%, #F0803C 0 62px, transparent 63px),
+      linear-gradient(180deg, #2E3742 0 46%, #7C8894 46% 52%, #D9DEE4 52% 100%);
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 0 0 1px rgba(0,0,0,.06);
+  }
+
+  .illo-art::after {
+    content: "";
+    position: absolute;
+    left: 22%; right: 22%; bottom: 16%;
+    height: 34%;
+    background: #1F262E;
+    clip-path: polygon(50% 0, 100% 100%, 0 100%);
+    opacity: .9;
+  }
+
+  .illo-cap {
+    font-family: var(--f-book);
+    font-style: italic;
+    font-size: 12.5px;
+    color: var(--paper-soft);
+    text-align: center;
+    padding: 14px 30px 0;
+  }
+
+  .press-ring {
+    position: absolute;
+    left: 46%;
+    top: 44%;
+    width: 62px; height: 62px;
+    margin: -31px 0 0 -31px;
+    border-radius: 100px;
+    border: 2px solid rgba(255,255,255,.85);
+    opacity: 0;
+    z-index: 4;
+  }
+
+  .phone[data-screen="illo"] .press-ring { animation: press 2.4s ease-out infinite; }
+
+  @keyframes press {
+    0%   { opacity: 0; transform: scale(.35); }
+    18%  { opacity: .95; transform: scale(1); }
+    46%  { opacity: .95; transform: scale(1); }
+    72%  { opacity: 0; transform: scale(1.05); }
+    100% { opacity: 0; transform: scale(1.05); }
+  }
+
+  /* ---------- page turn / curl ---------- */
+  .curl-under {
+    position: absolute;
+    inset: 0;
+    background: var(--paper);
+    padding: 60px 34px 0;
+    opacity: 0;
+    z-index: 2;
+  }
+
+  /* shading cast by the lifted leaf onto the page beneath */
+  .curl-under::after {
+    content: "";
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 46%;
+    background: linear-gradient(90deg, rgba(60,48,28,0) 55%, rgba(60,48,28,.16) 100%);
+    pointer-events: none;
+  }
+
+  .curl-leaf {
+    position: absolute;
+    top: 0; bottom: 0;
+    left: 30%;
+    right: 0;
+    background:
+      linear-gradient(96deg,
+        #EDE7DA 0%,
+        #FCFAF6 9%,
+        #F5F0E5 30%,
+        #E9E2D2 58%,
+        #D6CEBC 82%,
+        #F4EFE6 100%);
+    transform-origin: left center;
+    transform: perspective(1100px) rotateY(-24deg);
+    box-shadow: -30px 0 54px -16px rgba(48, 38, 20, .5);
+    border-radius: 0 6px 6px 0;
+    opacity: 0;
+    z-index: 3;
+  }
+
+  .phone[data-screen="turn"] .curl-under { opacity: 1; }
+  .phone[data-screen="turn"] .curl-leaf { opacity: 1; animation: curl 3.6s ease-in-out infinite; }
+  .phone[data-screen="turn"] .resume { opacity: 0; }
+
+  @keyframes curl {
+    0%   { transform: perspective(1100px) rotateY(-24deg); }
+    50%  { transform: perspective(1100px) rotateY(-64deg); }
+    100% { transform: perspective(1100px) rotateY(-24deg); }
+  }
+
+  /* ---------- NOTES ---------- */
+  .v-notes { background: var(--paper); color: var(--paper-ink); display: flex; flex-direction: column; }
+
+  .notes-head {
+    padding: 8px 26px 16px;
+    border-bottom: 1px solid var(--paper-rule);
+  }
+
+  .notes-head h3 {
+    margin: 0;
+    font-size: 27px;
+    letter-spacing: -.026em;
+    font-weight: 700;
+  }
+
+  .notes-head small {
+    font-family: var(--f-mono);
+    font-size: 10px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--paper-soft);
+  }
+
+  .note-list { padding: 4px 26px; overflow: hidden; }
+
+  .note {
+    padding: 17px 0;
+    border-bottom: 1px solid var(--paper-rule);
+  }
+
+  .note q {
+    display: block;
+    font-family: var(--f-book);
+    font-size: 15px;
+    line-height: 1.46;
+    quotes: none;
+    padding-left: 11px;
+    border-left: 3px solid var(--app-mark);
+    color: var(--paper-ink);
+  }
+
+  .note .mine {
+    display: block;
+    margin-top: 9px;
+    padding-left: 14px;
+    font-size: 13.5px;
+    line-height: 1.45;
+    color: var(--paper-soft);
+  }
+
+  .note .meta {
+    display: block;
+    margin-top: 9px;
+    font-family: var(--f-mono);
+    font-size: 9.5px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--paper-soft);
+  }
+
+  /* ============================================================
+     DESIGN LANGUAGE SECTION
+     ============================================================ */
+  .band {
+    border-top: 1px solid var(--rule);
+    padding: 76px 0;
+  }
+
+  .band > .wrap > .eyebrow { margin-bottom: 14px; }
+
+  .band h2 {
+    font-size: clamp(30px, 4.4vw, 44px);
+    letter-spacing: -.028em;
+    line-height: 1.08;
+    font-weight: 700;
+    margin: 0 0 18px;
+    max-width: 20ch;
+    text-wrap: balance;
+  }
+
+  .band > .wrap > p {
+    max-width: var(--measure);
+    color: var(--slate);
+    margin: 0 0 40px;
+  }
+
+  .grid3 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 22px;
+  }
+
+  .tile {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    padding: 22px;
+  }
+
+  .tile h3 {
+    margin: 0 0 8px;
+    font-size: 17px;
+    letter-spacing: -.015em;
+    font-weight: 650;
+  }
+
+  .tile p {
+    margin: 0;
+    font-size: 14.5px;
+    color: var(--slate);
+    line-height: 1.55;
+  }
+
+  .chips { display: flex; gap: 10px; margin-bottom: 16px; }
+
+  .chip {
+    flex: 1;
+    height: 54px;
+    border-radius: 8px;
+    display: grid;
+    place-items: end center;
+    padding-bottom: 6px;
+    font-family: var(--f-mono);
+    font-size: 9px;
+    letter-spacing: .08em;
+  }
+
+  .c-paper { background: #FAF7F1; color: #6E6559; box-shadow: inset 0 0 0 1px rgba(0,0,0,.1); }
+  .c-sepia { background: #EFE0C4; color: #7A6438; }
+  .c-night { background: #15171B; color: #8B929E; }
+  .c-pen   { background: #2C55A6; color: #C3D3F0; }
+  .c-mark  { background: #E3B23C; color: #6B5115; }
+
+  .spec {
+    font-family: var(--f-mono);
+    font-size: 12px;
+    color: var(--slate);
+    letter-spacing: .02em;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .spec b { color: var(--ink); font-weight: 600; }
+
+  .specimen {
+    background: var(--ground);
+    border-radius: 8px;
+    padding: 16px 18px;
+    margin-bottom: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .type-demo-book {
+    font-family: var(--f-book);
+    font-size: 22px;
+    line-height: 1.35;
+    margin: 0;
+    color: var(--ink);
+  }
+
+  .type-demo-ui {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -.012em;
+    color: var(--ink);
+    margin: 0;
+    padding-top: 10px;
+    border-top: 1px solid var(--rule);
+  }
+
+  /* ============================================================
+     RULES LIST
+     ============================================================ */
+  .rules {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+    gap: 0 44px;
+  }
+
+  .rules li {
+    padding: 22px 0;
+    border-bottom: 1px solid var(--rule);
+    display: grid;
+    grid-template-columns: 26px 1fr;
+    gap: 14px;
+    align-items: start;
+  }
+
+  .rules li::before {
+    content: "";
+    width: 9px; height: 9px;
+    margin-top: 9px;
+    border-radius: 2px;
+    background: var(--pen);
+    transform: rotate(45deg);
+  }
+
+  .rules b,
+  .rules span { grid-column: 2; }
+
+  .rules b {
+    font-size: 15.5px;
+    font-weight: 650;
+    letter-spacing: -.01em;
+    margin-bottom: 3px;
+  }
+
+  .rules span {
+    font-size: 14.5px;
+    color: var(--slate);
+    line-height: 1.5;
+  }
+
+  /* ============================================================
+     OPEN QUESTIONS
+     ============================================================ */
+  .asks { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 22px; }
+
+  .ask-card {
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    padding: 24px;
+    background: var(--surface);
+  }
+
+  .ask-card .eyebrow { margin-bottom: 10px; }
+
+  .ask-card h3 {
+    margin: 0 0 9px;
+    font-size: 19px;
+    letter-spacing: -.018em;
+    font-weight: 650;
+    text-wrap: balance;
+  }
+
+  .ask-card p { margin: 0; font-size: 14.5px; color: var(--slate); line-height: 1.55; }
+
+  footer {
+    border-top: 1px solid var(--rule);
+    padding: 40px 0 72px;
+    font-family: var(--f-mono);
+    font-size: 11.5px;
+    letter-spacing: .06em;
+    color: var(--slate-soft);
+    text-transform: uppercase;
+  }
+
+  /* ============================================================
+     RESPONSIVE
+     ============================================================ */
+  @media (max-width: 1080px) {
+    :root { --phone-scale: .72; }
+    .walk { gap: 48px; grid-template-columns: minmax(0, 320px) minmax(0, 1fr); }
+  }
+
+  @media (max-width: 860px) {
+    :root { --phone-scale: .46; }
+    .wrap { padding: 0 20px; }
+    .walk { grid-template-columns: 1fr; gap: 0; padding-top: 28px; }
+    .stage {
+      top: 0;
+      z-index: 20;
+      background: var(--ground);
+      padding: 14px 0 10px;
+      margin: 0 -20px;
+      border-bottom: 1px solid var(--rule);
+      box-shadow: 0 14px 22px -18px rgba(0,0,0,.5);
+    }
+    .step { padding: 34px 0 34px 48px; }
+    .step::before { top: 36px; width: 30px; height: 30px; font-size: 11px; }
+    .masthead { padding: 52px 0 40px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<div class="wrap">
+  <header class="masthead">
+    <p class="eyebrow">Product design · v1 · iOS</p>
+    <h1>Bookerize<span class="dot">.</span></h1>
+    <p class="lede">A reader for books that are slightly above your reading level — and a way to stop skipping the words you don't quite know.</p>
+    <div class="mast-meta">
+      <span><b>Reader</b> — PDF, full screen, page curl</span>
+      <span><b>Word</b> — long-press, offline definition</span>
+      <span><b>Sentence</b> — select, explained in plain words</span>
+    </div>
+  </header>
+</div>
+
+<div class="wrap">
+  <div class="walk">
+
+    <!-- ============ STICKY PHONE ============ -->
+    <div class="stage" id="stage" data-animated="no">
+      <div class="phone" id="phone" data-screen="library">
+        <div class="screen">
+
+          <!-- ---------- LIBRARY ---------- -->
+          <div class="view v-library">
+            <div class="statusbar">
+              <span>9:41</span>
+              <span class="icons">
+                <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect x="0" y="7.5" width="3" height="3.5" rx="1"/><rect x="4.5" y="5.5" width="3" height="5.5" rx="1"/><rect x="9" y="3" width="3" height="8" rx="1"/><rect x="13.5" y="0" width="3" height="11" rx="1"/></svg>
+                <svg width="16" height="11" viewBox="0 0 16 11" fill="currentColor"><path d="M8 10.5 5.9 8.2a3.1 3.1 0 0 1 4.2 0L8 10.5Zm-4-4.4a7.1 7.1 0 0 1 8 0l1.4-1.5a9.1 9.1 0 0 0-10.8 0L4 6.1Zm-2.6-2.8a11.1 11.1 0 0 1 13.2 0L16 1.8a13.1 13.1 0 0 0-16 0l1.4 1.5Z"/></svg>
+                <svg width="25" height="12" viewBox="0 0 25 12" fill="none"><rect x=".5" y=".5" width="21" height="11" rx="3.2" stroke="currentColor" opacity=".4"/><rect x="2" y="2" width="17" height="8" rx="2" fill="currentColor"/><path d="M23 4.2v3.6a2 2 0 0 0 0-3.6Z" fill="currentColor" opacity=".5"/></svg>
+              </span>
+            </div>
+
+            <div class="lib-head">
+              <h3>Library</h3>
+              <span class="lib-add">+</span>
+            </div>
+
+            <div class="shelf">
+              <div class="book">
+                <div class="cover cv-1">
+                  <div class="ct">The<br>Communi&shy;cation<br><em>Book</em></div>
+                  <div class="ca">Krogerus · Tschäppeler</div>
+                </div>
+                <b>The Communication Book</b>
+                <div class="prog"><i style="width:34%"></i></div>
+                <small>p. 47 / 137</small>
+              </div>
+
+              <div class="book">
+                <div class="cover cv-2">
+                  <div class="ct">Thinking<br>in Systems</div>
+                  <div class="ca">Donella Meadows</div>
+                </div>
+                <b>Thinking in Systems</b>
+                <div class="prog"><i style="width:49%"></i></div>
+                <small>p. 118 / 240</small>
+              </div>
+
+              <div class="book">
+                <div class="cover cv-3">
+                  <div class="ct">The<br>Sense<br>of Style</div>
+                  <div class="ca">Steven Pinker</div>
+                </div>
+                <b>The Sense of Style</b>
+                <div class="prog"><i style="width:0%"></i></div>
+                <small>Not started</small>
+              </div>
+
+              <div class="book">
+                <div class="cover cv-4">
+                  <div class="ct">Letters to a<br>Young Poet</div>
+                  <div class="ca">Rainer Maria Rilke</div>
+                </div>
+                <b>Letters to a Young Poet</b>
+                <div class="prog done"><i style="width:100%"></i></div>
+                <small>Finished</small>
+              </div>
+            </div>
+          </div>
+
+          <!-- ---------- READER ---------- -->
+          <div class="view v-reader">
+            <div class="statusbar">
+              <span>9:41</span>
+              <span class="icons">
+                <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect x="0" y="7.5" width="3" height="3.5" rx="1"/><rect x="4.5" y="5.5" width="3" height="5.5" rx="1"/><rect x="9" y="3" width="3" height="8" rx="1"/><rect x="13.5" y="0" width="3" height="11" rx="1"/></svg>
+                <svg width="25" height="12" viewBox="0 0 25 12" fill="none"><rect x=".5" y=".5" width="21" height="11" rx="3.2" stroke="currentColor" opacity=".4"/><rect x="2" y="2" width="17" height="8" rx="2" fill="currentColor"/><path d="M23 4.2v3.6a2 2 0 0 0 0-3.6Z" fill="currentColor" opacity=".5"/></svg>
+              </span>
+            </div>
+
+            <div class="resume">Resumed at page 47</div>
+
+            <!-- next page showing under the turning leaf -->
+            <div class="curl-under">
+              <div class="prose">
+                <p>The second habit is harder, because it looks like doing nothing at all. You let the other person finish, and then you let them finish again.</p>
+                <p>Most of us treat silence as a fault in the machine — a gap that we are responsible for closing.</p>
+              </div>
+            </div>
+            <div class="curl-leaf"></div>
+
+            <div class="page">
+              <div class="prose">
+                <p class="drop">Most conversations fail long before anyone disagrees. They fail in the first thirty seconds, when one person decides — usually without noticing — that they already know what the other is about to say.</p>
+                <div class="para-wrap">
+                  <div class="seltool"><span>Copy</span><span>Highlight</span><span>Note</span><span>Explain</span></div>
+                  <p>The repair is unglamorous. You ask a question you do not already know the answer to, and then you wait through the pause that follows. <mark class="sel">That pause is where <span class="wt">reciprocity</span> begins: the other person, given room, offers something they had not planned to.</mark></p>
+                </div>
+              </div>
+              <div class="pagenum">47</div>
+            </div>
+
+            <!-- illustration-only page -->
+            <div class="illo">
+              <div class="illo-art"><div class="press-ring"></div></div>
+              <div class="illo-cap">Fig. 12 — the listening gap</div>
+              <div class="pagenum">48</div>
+            </div>
+
+            <!-- word card -->
+            <div class="card card-word">
+              <div class="grabber"></div>
+              <div class="cw-head">
+                <h4>reciprocity</h4>
+                <span class="pos">noun</span>
+                <span class="src">Offline</span>
+              </div>
+              <p class="gloss">A relation of mutual dependence, action, or influence — the practice of exchanging things with others for mutual benefit.</p>
+              <div class="card-div"></div>
+
+              <button class="ask" type="button"><span class="spark">✦</span> What does it mean here?</button>
+
+              <div class="in-context">
+                <div class="ic-label">In this sentence</div>
+                <p class="stream" data-text="Here it's the back-and-forth that only starts once you stop filling the silence. You give the other person room; they give you something honest in return."><span class="caret"></span></p>
+              </div>
+
+              <div class="offrow">
+                <span class="dotmark"></span>
+                <p>In-context meaning needs a connection. The definition above works offline.</p>
+              </div>
+            </div>
+
+            <!-- explain sheet -->
+            <div class="card card-explain">
+              <div class="grabber"></div>
+              <div class="cw-head">
+                <h4 style="font-family:var(--f-ui);font-size:17px;font-weight:650;letter-spacing:-.015em;">In plain words</h4>
+                <span class="src">Gemini</span>
+              </div>
+              <p class="ce-quote">That pause is where reciprocity begins: the other person, given room, offers something they had not planned to.</p>
+              <p class="stream" data-text="If you wait instead of jumping in, people tend to fill the silence with something more honest than they meant to say. You give room, they give openness — that trade is the point."><span class="caret"></span></p>
+            </div>
+
+            <!-- themes sheet -->
+            <div class="card card-themes">
+              <div class="grabber"></div>
+              <h5>Reading ground</h5>
+              <div class="swatches">
+                <div class="sw sw-paper">Paper</div>
+                <div class="sw sw-sepia on">Sepia</div>
+                <div class="sw sw-night">Night</div>
+              </div>
+              <div class="grain-row">
+                <span>Paper grain</span>
+                <span class="toggle"></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- ---------- NOTES ---------- -->
+          <div class="view v-notes">
+            <div class="statusbar">
+              <span>9:41</span>
+              <span class="icons">
+                <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect x="0" y="7.5" width="3" height="3.5" rx="1"/><rect x="4.5" y="5.5" width="3" height="5.5" rx="1"/><rect x="9" y="3" width="3" height="8" rx="1"/><rect x="13.5" y="0" width="3" height="11" rx="1"/></svg>
+                <svg width="25" height="12" viewBox="0 0 25 12" fill="none"><rect x=".5" y=".5" width="21" height="11" rx="3.2" stroke="currentColor" opacity=".4"/><rect x="2" y="2" width="17" height="8" rx="2" fill="currentColor"/><path d="M23 4.2v3.6a2 2 0 0 0 0-3.6Z" fill="currentColor" opacity=".5"/></svg>
+              </span>
+            </div>
+            <div class="notes-head">
+              <h3>Marked</h3>
+              <small>The Communication Book · 9 items</small>
+            </div>
+            <div class="note-list">
+              <div class="note">
+                <q>That pause is where reciprocity begins: the other person, given room, offers something they had not planned to.</q>
+                <span class="mine">Try this in the Thursday review — stop rescuing the silence.</span>
+                <span class="meta">Page 47 · Highlight + note</span>
+              </div>
+              <div class="note">
+                <q>Most conversations fail long before anyone disagrees.</q>
+                <span class="meta">Page 47 · Highlight</span>
+              </div>
+              <div class="note">
+                <q>Asking a real question costs you the illusion that you already understood.</q>
+                <span class="meta">Page 44 · Highlight</span>
+              </div>
+              <div class="note">
+                <q>Advice is what we offer when listening has become too expensive.</q>
+                <span class="meta">Page 39 · Highlight</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="stage-foot">
+        <span class="screen-name" id="screenName">Library</span>
+        <button class="replay" id="replay" type="button">↻ Replay</button>
+      </div>
+    </div>
+
+    <!-- ============ STEPS ============ -->
+    <ol class="steps" id="steps">
+
+      <li class="step on" data-n="01" data-screen="library" data-name="Library">
+        <h2>Everything you're reading, and exactly where you stopped</h2>
+        <p>The shelf is the home screen. <strong>Covers are page one of the book itself</strong>, rendered by the PDF engine — so a book looks like itself without you having to supply artwork or metadata.</p>
+        <p>Under each cover: a progress bar and the real page number, not a percentage. "p. 47 / 137" tells you something; "34%" doesn't.</p>
+        <div class="rule-note">
+          <span class="tag">Import</span>
+          <p>Books come in from Files or iCloud Drive. A scanned PDF has no text layer, so word lookup and explanations can't work on it — the app checks that <em>at import</em> and says so plainly, rather than letting you find out three chapters in.</p>
+        </div>
+      </li>
+
+      <li class="step" data-n="02" data-screen="read" data-name="Reader">
+        <h2>Opening a book returns you to the page, never the beginning</h2>
+        <p>Tap a cover and you land on page 47 with a brief confirmation that fades. Your position is written on every page turn, so a crash, a force-quit, or a flat battery costs you nothing.</p>
+        <p>Then the chrome gets out of the way. <strong>No toolbar, no page slider, no floating buttons</strong> — the page is the whole screen. One tap brings the bar back when you want it.</p>
+      </li>
+
+      <li class="step" data-n="03" data-screen="turn" data-name="Page turn">
+        <h2>Pages turn like paper</h2>
+        <p>Swipe and the page lifts, curls, and drops — with the weight and shadow of a real leaf, not a slide transition.</p>
+        <div class="rule-note">
+          <span class="tag">Why it's built last</span>
+          <p>The curl animates a picture of the page, but selecting text needs the live page. So the app shows the real page at rest and swaps to the curl only during the swipe — you can't select text mid-swipe anyway, so the switch is invisible.</p>
+        </div>
+      </li>
+
+      <li class="step" data-n="04" data-screen="word" data-name="Word lookup">
+        <h2>Long-press a word you don't quite know</h2>
+        <p>A card rises from the bottom edge with the definition — <strong>instantly, offline, and free</strong>. The dictionary ships inside the app, so this works on a plane, on the underground, and on a bad hotel connection.</p>
+        <div class="rule-note">
+          <span class="tag">Why the bottom, not a bubble</span>
+          <p>A popover over the word covers the sentence you were reading and sits where your thumb isn't. A card at the bottom leaves the text visible above it and lands where your hand already is.</p>
+        </div>
+      </li>
+
+      <li class="step" data-n="05" data-screen="context" data-name="In context">
+        <h2>Then ask what it means <em>here</em></h2>
+        <p>A dictionary tells you what a word means in general. The whole point of this app is the second question: what is it doing <strong>in this sentence</strong>. One tap, and the answer writes itself into the card.</p>
+        <p>It streams a word at a time on purpose. Three seconds behind a spinner feels broken; the same three seconds with words arriving feels quick.</p>
+        <div class="rule-note">
+          <span class="tag">Asked once, ever</span>
+          <p>Every answer is stored against that word in that sentence. Look it up again next month and it appears instantly, offline, at no cost.</p>
+        </div>
+      </li>
+
+      <li class="step" data-n="06" data-screen="select" data-name="Selection">
+        <h2>Select a sentence that won't sit still</h2>
+        <p>Drag across text and you get the standard iOS selection you already know — grab handles, real highlighting — plus one extra item on the toolbar: <strong>Explain</strong>.</p>
+        <p>Highlight and Note are there too, because the sentence you don't understand and the sentence you want to keep are often the same one.</p>
+      </li>
+
+      <li class="step" data-n="07" data-screen="explain" data-name="Explain">
+        <h2>Get it back in plain words</h2>
+        <p>A sheet slides up with the original sentence at the top and a simpler version beneath it. Not a summary and not a translation — <strong>the same meaning, in easier language</strong>, so you can go back and read the author's version and finally see it.</p>
+        <p>Dismiss it with a swipe. You're back on the page, exactly where you were.</p>
+      </li>
+
+      <li class="step" data-n="08" data-screen="illo" data-name="Picture pages">
+        <h2>On a picture page, long-press does nothing at all</h2>
+        <p>A third of this book — 46 pages of 137 — is full-page illustration with no text behind it. Long-press there and <strong>nothing happens: no error, no toast, no buzz</strong>.</p>
+        <p>An app that shouts "no text found" on a third of the book teaches you it's broken. Silence teaches you there's nothing there, which is true.</p>
+      </li>
+
+      <li class="step" data-n="09" data-screen="notes" data-name="Marked">
+        <h2>What you marked, kept in one place</h2>
+        <p>Highlights and notes collect per book, newest first, each with the page it came from. Tap one to jump back to it on the page.</p>
+        <p>Highlights are anchored to the <strong>text</strong>, not to a rectangle on the screen — so they stay put when you change the reading ground or rotate the phone.</p>
+      </li>
+
+      <li class="step" data-n="10" data-screen="themes" data-name="Reading ground">
+        <h2>Three grounds, chosen for the hour</h2>
+        <p>Paper for daylight, sepia for evening, night for the dark. Night isn't an inverted page — the paper is dimmed and the ink lifted, so illustrations don't turn into negatives.</p>
+        <p>Optional paper grain sits under the text at very low contrast. It's off by default.</p>
+      </li>
+
+      <li class="step" data-n="11" data-screen="offline" data-name="Offline">
+        <h2>With no signal, it's still a dictionary</h2>
+        <p>The definition is local, so it appears as usual. The in-context line is replaced by <strong>one quiet sentence saying what needs a connection</strong> — no red, no alert, no retry loop.</p>
+        <p>Anything you've already looked up in this book stays available, because it was saved the first time.</p>
+      </li>
+
+    </ol>
+  </div>
+</div>
+
+<!-- ============ DESIGN LANGUAGE ============ -->
+<section class="band">
+  <div class="wrap">
+    <p class="eyebrow">Design language</p>
+    <h2>Two materials, held apart</h2>
+    <p>Everything in the app is either <em>the book</em> or <em>the instrument</em>, and the two never borrow each other's clothes. The book is serif on paper. The instrument — cards, toolbars, labels — is the iOS system face on glass. You always know which one is speaking.</p>
+
+    <div class="grid3">
+      <div class="tile">
+        <div class="chips">
+          <span class="chip c-paper">PAPER</span>
+          <span class="chip c-sepia">SEPIA</span>
+          <span class="chip c-night">NIGHT</span>
+        </div>
+        <h3>Grounds</h3>
+        <p>Three reading surfaces, warm rather than white. The page is the only large field of colour in the app.</p>
+      </div>
+
+      <div class="tile">
+        <div class="chips">
+          <span class="chip c-pen">PEN</span>
+          <span class="chip c-mark">MARKER</span>
+        </div>
+        <h3>Two accents, both earned</h3>
+        <p>Ballpoint blue means <em>the app is doing something for you</em> — lookups, explanations. Highlighter amber means <em>you did something</em> — selections, highlights, notes. Nothing else is coloured.</p>
+      </div>
+
+      <div class="tile">
+        <div class="specimen">
+          <p class="type-demo-book">That pause is where reciprocity begins.</p>
+          <p class="type-demo-ui">What does it mean here?</p>
+        </div>
+        <h3>Type</h3>
+        <p class="spec">
+          <span><b>Book</b> — Georgia · 17.5/1.62 · adjustable</span>
+          <span><b>Instrument</b> — SF Pro · 15/1.4 · −0.01em</span>
+          <span><b>Labels</b> — SF Mono · 9.5 · uppercase</span>
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ BEHAVIOUR RULES ============ -->
+<section class="band">
+  <div class="wrap">
+    <p class="eyebrow">Behaviour</p>
+    <h2>The rules that hold when things go wrong</h2>
+    <p>Most of an app's character shows up in the failure cases. These are decided, not open.</p>
+
+    <ul class="rules">
+      <li><b>Failure is silent where absence is normal</b><span>No text under your finger means nothing happens. Errors are reserved for things that are actually wrong.</span></li>
+      <li><b>Nothing is ever asked twice</b><span>Every definition and explanation is stored against its exact word and sentence, so a second look costs nothing and works offline.</span></li>
+      <li><b>Offline degrades, it doesn't break</b><span>The dictionary is local and always works. Only the in-context lines go quiet, and they say so in one plain sentence.</span></li>
+      <li><b>Your position is never lost</b><span>Written on every page turn, so force-quitting is a safe way to close the app.</span></li>
+      <li><b>Words are found by shape, not spaces</b><span>Chapter headings are often letter-spaced — T H E  B O O K. Long-pressing one returns the whole word, not one letter.</span></li>
+      <li><b>Your key never leaves the server</b><span>The app talks to a small proxy that holds the API key. Nothing sensitive ships inside the app, on your phone or anyone else's.</span></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============ OPEN QUESTIONS ============ -->
+<section class="band">
+  <div class="wrap">
+    <p class="eyebrow">Yours to decide</p>
+    <h2>Four calls I'd rather you made</h2>
+    <p>Everything above is settled enough to build. These four aren't, and all of them are cheap to change now and annoying to change later.</p>
+
+    <div class="asks">
+      <div class="ask-card">
+        <p class="eyebrow">01</p>
+        <h3>Is it called Bookerize?</h3>
+        <p>It's a working title. The name is baked into the App Store listing and the icon at TestFlight, so it's worth deciding before then — but trivial to change today.</p>
+      </div>
+      <div class="ask-card">
+        <p class="eyebrow">02</p>
+        <h3>Shelf or list?</h3>
+        <p>Covers look better. A list holds far more books legibly. With a handful of books the shelf wins; if you'll keep fifty, it doesn't.</p>
+      </div>
+      <div class="ask-card">
+        <p class="eyebrow">03</p>
+        <h3>What should the background do?</h3>
+        <p>You asked for a subtle animation. Paper grain that sits still? A gradient that drifts over minutes? Something that reacts to the page turn? They're very different amounts of work.</p>
+      </div>
+      <div class="ask-card">
+        <p class="eyebrow">04</p>
+        <h3>One tap, or two?</h3>
+        <p>Right now the in-context meaning is a second tap. The alternative is fetching it the moment you long-press — faster, but it spends money on every lookup, including the ones the dictionary already answered.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">Bookerize · product design · v1 · iOS first</div>
+</footer>
+
+<script>
+  (function () {
+    var phone = document.getElementById('phone');
+    var stage = document.getElementById('stage');
+    var nameEl = document.getElementById('screenName');
+    var replay = document.getElementById('replay');
+    var steps = Array.prototype.slice.call(document.querySelectorAll('.step'));
+    var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // Screens whose content types itself in.
+    var ANIMATED = { context: '.card-word .stream', explain: '.card-explain .stream' };
+    var timer = null;
+    var current = 'library';
+
+    function typeInto(selector) {
+      var el = phone.querySelector(selector);
+      if (!el) return;
+      var full = el.getAttribute('data-text') || '';
+      var caret = el.querySelector('.caret');
+      if (timer) { clearInterval(timer); timer = null; }
+
+      if (reduced) {
+        setText(el, full, caret);
+        caret && caret.classList.add('off');
+        return;
+      }
+
+      setText(el, '', caret);
+      caret && caret.classList.remove('off');
+      var i = 0;
+      timer = setInterval(function () {
+        i += 2;
+        setText(el, full.slice(0, i), caret);
+        if (i >= full.length) {
+          clearInterval(timer);
+          timer = null;
+          setTimeout(function () { caret && caret.classList.add('off'); }, 700);
+        }
+      }, 26);
+    }
+
+    function setText(el, text, caret) {
+      // Keep the caret element; replace only the text node before it.
+      while (el.firstChild && el.firstChild !== caret) el.removeChild(el.firstChild);
+      if (text) el.insertBefore(document.createTextNode(text), caret || null);
+    }
+
+    function show(screen, label) {
+      if (screen === current) return;
+      current = screen;
+      phone.setAttribute('data-screen', screen);
+      nameEl.textContent = label;
+      var sel = ANIMATED[screen];
+      stage.setAttribute('data-animated', sel ? 'yes' : 'no');
+      if (timer) { clearInterval(timer); timer = null; }
+      if (sel) setTimeout(function () { typeInto(sel); }, 420);
+    }
+
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        steps.forEach(function (s) { s.classList.remove('on'); });
+        entry.target.classList.add('on');
+        show(entry.target.getAttribute('data-screen'), entry.target.getAttribute('data-name'));
+      });
+    }, { rootMargin: '-45% 0px -45% 0px', threshold: 0 });
+
+    steps.forEach(function (s) { io.observe(s); });
+
+    replay.addEventListener('click', function () {
+      var sel = ANIMATED[current];
+      if (sel) typeInto(sel);
+    });
+  })();
+</script>
