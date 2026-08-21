@@ -17,6 +17,15 @@ picked up on any machine.
 > **Blocked on:** Gemini quota only. Nothing else is outstanding.
 > ⚠️ Still unconfirmed: that a real finger selects text (needed for "Explain a sentence").
 
+### Where the work is
+
+Pushed to **https://github.com/semsethy/Bookerize** (public) through Phase 5.
+The Worker address, the device token and the sample book are all gitignored, so a fresh clone
+needs: a PDF in `assets/books/`, and the two `--dart-define`s for the AI features.
+
+`design/product-design.html` is deliberately **untracked** — the product design walkthrough,
+kept local until it is worth publishing.
+
 ### How to resume on a new laptop
 
 ```bash
@@ -55,7 +64,7 @@ Claude Code reads `CLAUDE.md` automatically, which points at `PLAN.md` and this 
 | 2 | Library and persistence | ✅ Done | Drift + import + covers; resumes your page |
 | 3 | Full-screen paging | ✅ Done | Horizontal snap paging, built on pdfrx's own hooks |
 | 4 | Text interaction layer | ✅ Done | Word lookup works offline; thresholds measured, not guessed |
-| 5 | AI layer (+ proxy) | 🟡 In progress | Built and tested against a fake; never spoken to real Gemini |
+| 5 | AI layer (+ proxy) | 🟡 In progress | Proxy deployed and answering; awaiting quota reset to see it in the card |
 | 6 | Notes and backgrounds | ⬜ Not started | |
 | 7 | Page curl | ⬜ Not started | Hybrid approach — see PLAN.md §5 |
 | 8 | TestFlight | ⬜ Not started | Needs Apple Developer Program ($99/yr) |
@@ -105,8 +114,8 @@ conflicts. Scratch project deleted afterward.
 
 | Item | Needed at | Status |
 |---|---|---|
-| Cloudflare account + `wrangler` | Phase 5 | ❌ Not set up. `wrangler` 4.125.0 is installed; the account is not. |
-| Gemini API key | Phase 5 | ❌ Not set up — aistudio.google.com |
+| Cloudflare account + `wrangler` | Phase 5 | ✅ **Done 2026-08-21.** Account created, `wrangler` 4.125.0 logged in, Worker deployed with both secrets set. Address in `proxy/.local-url`. |
+| Gemini API key | Phase 5 | ✅ **Done 2026-08-21.** Entered through the Cloudflare dashboard, so it never touched a terminal or this repo. ⚠️ Free tier is **20 requests/day**; testing exhausted 2026-08-21's allowance. |
 | WordNet dictionary data | Phase 4 | ✅ **Done.** `tool/build_wordnet.py` builds `assets/dictionary/wordnet.sqlite` from Princeton WordNet 3.1: 132,826 senses, 12.3 MB, committed. Licence in `assets/dictionary/WORDNET_LICENSE.txt`. |
 | Apple Developer Program ($99/yr) | Phase 8 | ❌ Not enrolled. Simulator work needs nothing. |
 
