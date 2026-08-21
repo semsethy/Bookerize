@@ -18,6 +18,10 @@ analyzer:
     - windows/**
     - macos/**
     - linux/**
+    # One-off measurement scripts, run by hand against a real PDF to derive the
+    # word-grouping thresholds in lib/reader/word_finder.dart. They import
+    # pdfrx_engine directly, which is transitive rather than declared.
+    - tool/probe/**
 
 linter:
   # The lint rules applied to this project can be customized in the

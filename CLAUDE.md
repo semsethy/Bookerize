@@ -80,6 +80,8 @@ Analyzed `the_communication_book_44_ideas_for_better_conversations_every_day.pdf
 - **46 pages have zero text** — full-page JPEG illustrations. Handle gracefully.
 - **Headings are letter-spaced** (`T H E   B O O K`). Group characters into words by
   *proximity*, not whitespace, or long-pressing a heading returns a single letter.
+  Solved in `lib/reader/word_finder.dart`; the two thresholds there were measured off this
+  book with `tool/probe/measure_word_gaps.dart`, not guessed.
 - **All pages are 612×792 pt.** One constant coordinate transform works for this book — do
   not assume it for imported books.
 - Illustrations are low-res (457×375) and will look soft. That's the source file, not a bug.
@@ -102,6 +104,7 @@ flutter test                 # unit tests
 flutter test integration_test -d <device-id>   # on-device tests (real gestures)
 dart format .                # format
 dart run build_runner build  # regenerate Drift code after changing a table
+python3 tool/build_wordnet.py # rebuild the offline dictionary (rarely needed)
 cd proxy && npx wrangler dev  # run the proxy locally (Phase 5+)
 ```
 
@@ -114,4 +117,6 @@ cd proxy && npx wrangler dev  # run the proxy locally (Phase 5+)
 - Generated `*.g.dart` files **are committed** so a fresh clone compiles without extra steps
 - Book and cover paths are stored in the database **relative** to the documents directory —
   iOS renames the app container, so absolute paths go stale
+- Dictionary lookups rank senses by WordNet's **tagged frequency**, never by trying one part
+  of speech first — otherwise "are" resolves to a unit of area rather than the verb "be"
 - Commit at the end of each phase with a message naming the phase

@@ -7,12 +7,13 @@ picked up on any machine.
 
 ## 🔖 Resume here
 
-> **Current phase:** Phase 3 ✅ complete → starting **Phase 4 (Text interaction layer)** ⭐
-> **Next action:** the hard one. Screen point → PDF page space, long-press → hit-test character
-> rects → expand to word boundaries by *proximity* (headings are letter-spaced), pull the
-> containing sentence, and show an offline WordNet definition. Build the WordNet SQLite first.
-> **Blocked on:** Nothing. ⚠️ Please long-press some text in the Simulator by hand and tell me
-> it still selects — see "Not verified" in the Phase 3 session note.
+> **Current phase:** Phase 4 ✅ complete → starting **Phase 5 (AI layer + proxy)** ⭐
+> **Next action:** Cloudflare Worker holding the API key, per-device tokens, rate limiting.
+> Then wire the two placeholders that are already on screen: "What does it mean here?" on the
+> word card, and "Explain" on the selection toolbar. Cache every result in Drift.
+> **Blocked on:** A Cloudflare account — the first thing in this phase that isn't free.
+> ⚠️ Still unconfirmed: that a real finger selects text (see Phase 3's note). Long-press
+> lookup is proven on device and does *not* depend on it, but "Explain a sentence" does.
 
 ### How to resume on a new laptop
 
@@ -51,7 +52,7 @@ Claude Code reads `CLAUDE.md` automatically, which points at `PLAN.md` and this 
 | 1 | A PDF on screen | ✅ Done | pdfrx renders the sample book in the Simulator |
 | 2 | Library and persistence | ✅ Done | Drift + import + covers; resumes your page |
 | 3 | Full-screen paging | ✅ Done | Horizontal snap paging, built on pdfrx's own hooks |
-| 4 | Text interaction layer | ⬜ Not started | The hard one |
+| 4 | Text interaction layer | ✅ Done | Word lookup works offline; thresholds measured, not guessed |
 | 5 | AI layer (+ proxy) | ⬜ Not started | Needs Cloudflare account |
 | 6 | Notes and backgrounds | ⬜ Not started | |
 | 7 | Page curl | ⬜ Not started | Hybrid approach — see PLAN.md §5 |
@@ -103,7 +104,7 @@ conflicts. Scratch project deleted afterward.
 | Item | Needed at | Status |
 |---|---|---|
 | Cloudflare account + `wrangler` | Phase 5 | ❌ Not set up |
-| WordNet dictionary data | Phase 4 | ⚠️ No maintained Flutter package exists. Princeton raw data is reachable (HTTP 200) — we'll build our own SQLite from it as a one-time preprocessing step. |
+| WordNet dictionary data | Phase 4 | ✅ **Done.** `tool/build_wordnet.py` builds `assets/dictionary/wordnet.sqlite` from Princeton WordNet 3.1: 132,826 senses, 12.3 MB, committed. Licence in `assets/dictionary/WORDNET_LICENSE.txt`. |
 | Apple Developer Program ($99/yr) | Phase 8 | ❌ Not enrolled. Simulator work needs nothing. |
 
 ---
@@ -139,12 +140,52 @@ Append here whenever a choice is made, so the reasoning survives context resets.
 | 2026-08-21 | Don't snap when the view never moved | Every gesture ends with an interaction-end, including a long-press. Animating back to the page you never left is pointless and risks cancelling a selection. |
 | 2026-08-21 | **Strip pdfrx's "Select All" from the context menu** | It paints a selection across all 137 pages; the 46 with no text have zero text fragments, and pdfrx asks that empty list for its last element → `Bad state: No element`, thrown from `paint()`. Reachable from the default toolbar. Recorded as non-negotiable #4. |
 | 2026-08-21 | Added `integration_test` (verified SPM, no CocoaPods) | Unit tests cannot reach a finger, and "turn a page and your place is kept" is made of gestures. |
+| 2026-08-21 | Word-grouping thresholds **measured off the real book**, not guessed | `tool/probe/measure_word_gaps.dart` printed the numbers: a letter-spacing gap is 0.27 of a glyph width, a real word space is 0.65–0.97, and body text never exceeds a 0.17 gap. Both thresholds sit in wide empty margins. |
+| 2026-08-21 | Rank dictionary senses by WordNet's **tagged frequency** | Trying parts of speech in a fixed order made "are" resolve to the noun — "a unit of surface area equal to 100 square meters". Caught by looking at the screen, not by a test. WordNet's `cntlist.rev` gives "be" a count of 10,742 against nothing for "are". |
+| 2026-08-21 | Cap at 5 senses per lemma, skip multi-word entries | Multi-word entries can never be reached by long-pressing one word, and the first few senses are the ones a reader wants. Keeps the bundle at 12.3 MB. |
+| 2026-08-21 | Commit the 12.3 MB dictionary | Same reason as the generated Drift code: a fresh clone has to build without first running a script that downloads 16 MB from Princeton. |
+| 2026-08-21 | Word card rises from the bottom, not over the word | A popover covers the sentence you were reading and sits where your thumb isn't. Settled in the design review and now built. |
 
 ---
 
 ## Session log
 
 Newest first. One entry per working session.
+
+### 2026-08-21 — Phase 4: text interaction layer ⭐
+- **Built the offline dictionary.** `tool/build_wordnet.py` downloads Princeton WordNet 3.1
+  and produces `assets/dictionary/wordnet.sqlite` — 132,826 senses in 12.3 MB, committed.
+- `lib/reader/word_finder.dart` — the heart of the phase. Turns a page's characters into
+  words you can hit-test with a fingertip, grouping by **proximity** so letter-spaced
+  headings come back whole.
+- `lib/dictionary/morphy.dart` — WordNet's exception lists and detachment rules, so
+  `conversations` finds `conversation` and `ran` finds `run`.
+- `lib/reader/page_words.dart` — loads and caches a page's text so a long-press is instant.
+- `lib/dictionary/word_card.dart` — the card from the design review, rising from the bottom.
+- "What does it mean here?" and "Explain" are on screen and visibly inert, waiting for Phase 5.
+- 52 unit tests + 4 on-device tests, analyze clean, preflight green, still no Podfile.
+
+**The thresholds were measured, not guessed.** `tool/probe/measure_word_gaps.dart` was written
+to print real numbers off the sample book before any heuristic was chosen:
+
+| signal | letter-spacing | real word break |
+|---|---|---|
+| whitespace glyph width | 0.27 | 0.65 – 0.97 |
+| gap between glyphs | 0.03 – 0.11 | 0.84 – 0.90 |
+
+Body text never produced a gap above 0.17, so both thresholds sit in wide empty margins.
+`test/real_book_test.dart` then checks the finder against the actual PDF rather than synthetic
+rectangles — synthetic tests only prove the code matches what the author imagined.
+
+**A bug the tests could not have caught.** The first run on the Simulator long-pressed "are"
+and the card said *"a unit of surface area equal to 100 square meters"*. Correct data, useless
+answer: the lookup tried nouns first, arbitrarily. Fixed by ranking senses across all parts of
+speech by WordNet's tagged frequency (`cntlist.rev`), where "be" scores 10,742 and the noun
+"are" was never tagged at all. Worth remembering that this was found by *looking at the
+screen*, after every unit test had passed.
+
+**Silence on picture pages is tested, not assumed.** An on-device test long-presses an
+illustration-only page and asserts no card, no snackbar, and no exception (non-negotiable #3).
 
 ### 2026-08-21 — Phase 3: full-screen paging
 - One page per screen, turned by swiping sideways, **without replacing the pdfrx viewer**
@@ -240,6 +281,7 @@ aspect ratio — but it is a design choice, and Phase 6's reading backgrounds wi
 ## Open questions
 
 - [ ] App name — `bookerize` is a working title, easy to change before Phase 8
-- [ ] Which WordNet build to bundle (size vs. coverage trade-off) — decide at Phase 4
+- [x] Which WordNet build to bundle — WordNet 3.1, single words only, 5 senses each: 12.3 MB
+- [ ] In-app WordNet attribution before TestFlight (Phase 8) — the licence asks for it
 - [ ] Background "animation" — what did you have in mind? Subtle gradient drift, paper
       texture, page-turn particles? Decide at Phase 6.

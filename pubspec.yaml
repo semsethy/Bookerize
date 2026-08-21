@@ -72,6 +72,9 @@ flutter:
   # fresh clone this folder holds only .gitkeep and the app will say so on screen.
   assets:
     - assets/books/
+    # WordNet 3.1, built by tool/build_wordnet.py and committed so a fresh clone
+    # runs without a 16 MB download first.
+    - assets/dictionary/wordnet.sqlite
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

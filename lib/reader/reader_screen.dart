@@ -4,8 +4,10 @@ import 'package:pdfrx/pdfrx.dart';
 
 import '../data/app_database.dart';
 import '../data/providers.dart';
+import '../dictionary/word_card.dart';
 import '../theme.dart';
 import 'page_layout.dart';
+import 'page_words.dart';
 import 'reader_chrome.dart';
 
 /// One page per screen, turned by swiping sideways.
@@ -35,6 +37,9 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
   int _pageCount = 1;
   bool _chromeVisible = false;
   bool _snapping = false;
+
+  final _pageWords = PageWordCache();
+  WordLookup? _lookup;
 
   /// The zoom at which exactly one page fills the screen. Captured once the
   /// viewer is ready so we can tell "resting on a page" from "zoomed in".
@@ -105,6 +110,64 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     await _controller.goToPage(pageNumber: clamped);
   }
 
+  /// Long-press a word to look it up.
+  ///
+  /// Nothing happens when there is no word under the finger. That is the normal
+  /// case on 46 of this book's 137 pages, which are illustrations — an error
+  /// there would teach the reader the app is broken (non-negotiable #3).
+  Future<void> _lookUpWordAt(Offset documentPosition) async {
+    if (!_controller.isReady) return;
+
+    final layout = _controller.layout;
+    final pageNumber = _pageAt(layout, documentPosition);
+    if (pageNumber == null) return;
+
+    final words = await _pageWords.forPage(
+      document: _controller.document,
+      layout: layout,
+      pageNumber: pageNumber,
+    );
+    if (words == null) return; // a page with no text: stay silent
+
+    final word = words.finder.wordAt(documentPosition);
+    if (word == null) return; // a margin, or the space between words
+
+    final dictionary = await ref.read(dictionaryProvider.future);
+    if (!mounted) return;
+
+    setState(() {
+      _lookup = WordLookup(
+        word: word.text,
+        sentence: words.sentenceFor(word),
+        definitions: dictionary.lookup(word.text),
+      );
+    });
+  }
+
+  /// Which page a document-space point falls on.
+  int? _pageAt(PdfPageLayout layout, Offset point) {
+    for (var i = 0; i < layout.pageLayouts.length; i++) {
+      if (layout.pageLayouts[i].contains(point)) return i + 1;
+    }
+    return null;
+  }
+
+  /// Placeholder for Phase 5: selecting a sentence and asking for it in plain
+  /// words. Says so rather than doing nothing, so a tap never feels broken.
+  void _explainSelection() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Explaining a sentence arrives in the next phase.'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _dismissLookup() {
+    if (_lookup != null) setState(() => _lookup = null);
+  }
+
   /// pdfrx hands us taps from its own gesture pipeline, so we get edge-tap
   /// paging without adding a competing GestureDetector.
   bool _onTap(
@@ -112,7 +175,18 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
     PdfViewerController controller,
     PdfViewerGeneralTapHandlerDetails details,
   ) {
+    if (details.type == PdfViewerGeneralTapType.longPress) {
+      _lookUpWordAt(details.documentPosition);
+      return true;
+    }
+
     if (details.type != PdfViewerGeneralTapType.tap) return false;
+
+    // Any tap puts the card away first, rather than also turning a page.
+    if (_lookup != null) {
+      _dismissLookup();
+      return true;
+    }
 
     // Never steal a tap that lands on text the reader has selected — that's
     // their selection, and Phase 4 hangs off it.
@@ -186,6 +260,9 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                       ),
                   onViewerReady: (document, controller) {
                     _fitZoom = controller.currentZoom;
+                    // Cached word boxes are in document coordinates, which a
+                    // re-layout invalidates.
+                    _pageWords.clear();
                   },
                   // pdfrx's built-in "Select All" paints a selection across
                   // every page at once. On a book with text-free pages — 46 of
@@ -196,6 +273,17 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                     items.removeWhere(
                       (item) => item.type == ContextMenuButtonType.selectAll,
                     );
+                    // Phase 5 wires this to the model. It is here now so the
+                    // toolbar's final shape is settled before anything depends
+                    // on it.
+                    if (params.textSelectionDelegate.hasSelectedText) {
+                      items.add(
+                        ContextMenuButtonItem(
+                          label: 'Explain',
+                          onPressed: _explainSelection,
+                        ),
+                      );
+                    }
                   },
                   onPageChanged: _onPageChanged,
                   onInteractionEnd: _snapToNearestPage,
@@ -203,6 +291,8 @@ class _ReaderScreenState extends ConsumerState<ReaderScreen> {
                 ),
               ),
             ),
+            if (_lookup != null)
+              WordCard(lookup: _lookup!, onDismiss: _dismissLookup),
             ReaderChrome(
               visible: _chromeVisible,
               title: book.title,

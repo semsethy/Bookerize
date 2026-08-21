@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../dictionary/dictionary.dart';
 import 'app_database.dart';
 import 'book_repository.dart';
 
@@ -16,11 +17,21 @@ final bookRepositoryProvider = Provider<BookRepository>((ref) {
   return BookRepository(ref.watch(databaseProvider));
 });
 
+/// The bundled offline dictionary. Opened once and kept for the app's lifetime;
+/// a long-press should never wait on a file copy.
+final dictionaryProvider = FutureProvider<Dictionary>((ref) async {
+  final dictionary = await Dictionary.open();
+  ref.onDispose(dictionary.close);
+  return dictionary;
+});
+
 /// Runs once at launch: makes the storage folders and copies in any bundled book.
 final startupProvider = FutureProvider<void>((ref) async {
   final repo = ref.watch(bookRepositoryProvider);
   await repo.init();
   await repo.seedBundledBooks();
+  // Get the dictionary out of the app bundle now rather than on first press.
+  await ref.watch(dictionaryProvider.future);
 });
 
 /// A live view of the shelf. Because it's a Stream from Drift, importing a book
