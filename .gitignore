@@ -46,3 +46,4 @@ secrets.dart
 # Sample books — copyrighted, never commit
 assets/books/*.pdf
 assets/books/*.epub
+proxy/.local-token

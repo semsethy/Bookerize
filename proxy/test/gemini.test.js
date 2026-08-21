@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { createSseParser, textFromRecord } from '../src/gemini.js';
+import { createSseParser, errorFromRecord, textFromRecord } from '../src/gemini.js';
 
 test('parses one complete SSE record', () => {
   const parse = createSseParser();
@@ -82,4 +82,37 @@ test('a realistic stream reassembles into the full answer', () => {
   }
 
   assert.equal(answer, 'It means give and take.');
+});
+
+test('an upstream error event is turned into something a reader can act on', () => {
+  // Gemini reports failures inside a 200 response. Ignoring unknown events made
+  // a quota error arrive as a blank card saying nothing.
+  const quota = errorFromRecord({
+    event: 'error',
+    data: JSON.stringify({
+      error: { message: 'You exceeded your current quota. Quota exceeded for metric: generate_content_free_tier_requests, limit: 20' },
+    }),
+  });
+
+  assert.match(quota, /free Gemini quota is used up/);
+  assert.match(quota, /resets tomorrow/);
+  assert.doesNotMatch(quota, /generativelanguage|metric:/, 'no raw Google internals');
+});
+
+test('a refused key is named as such', () => {
+  const message = errorFromRecord({
+    event: 'error',
+    data: JSON.stringify({ error: { message: 'API key not valid. PERMISSION_DENIED' } }),
+  });
+  assert.match(message, /GEMINI_API_KEY/);
+});
+
+test('an unparseable error still says something', () => {
+  assert.match(errorFromRecord({ event: 'error', data: 'not json' }), /without explaining/);
+});
+
+test('ordinary events are not treated as errors', () => {
+  for (const event of ['step.delta', 'step.start', 'interaction.completed', 'done']) {
+    assert.equal(errorFromRecord({ event, data: '{}' }), null);
+  }
 });

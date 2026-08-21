@@ -48,7 +48,14 @@ class AiClient {
         data: body,
         options: Options(
           responseType: ResponseType.stream,
-          headers: {'authorization': 'Bearer $token'},
+          headers: {
+            'authorization': 'Bearer $token',
+            // Without this the server may gzip the stream, and dio does not
+            // decompress it for ResponseType.stream — the bytes then parsed to
+            // nothing and the card sat there empty. Compressing an event
+            // stream also buffers it, defeating the point of streaming.
+            'accept-encoding': 'identity',
+          },
           // The proxy caps the answer length, so a slow reply is a broken one.
           receiveTimeout: const Duration(seconds: 45),
           sendTimeout: const Duration(seconds: 20),
@@ -67,7 +74,17 @@ class AiClient {
     final body_ = response.data;
     if (body_ == null) throw const AiException('The answer never arrived.');
 
-    yield* _parseSse(body_.stream);
+    var produced = false;
+    await for (final text in _parseSse(body_.stream)) {
+      produced = true;
+      yield text;
+    }
+
+    if (!produced) {
+      // Silence means something upstream changed shape. Say so, rather than
+      // leaving the reader looking at a blank card wondering.
+      throw const AiException('The answer came back empty. Try again.');
+    }
   }
 
   /// Turns the proxy's `data:` lines back into text.

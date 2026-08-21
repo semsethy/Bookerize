@@ -38,6 +38,40 @@ export function createSseParser() {
   };
 }
 
+/**
+ * A readable message if this record is an upstream failure, else null.
+ *
+ * Gemini reports failures *inside* a 200 response, as `event: error`. Ignoring
+ * unknown events — which is right for the chatty ones like step.start — meant
+ * a quota error arrived as a blank card saying nothing at all.
+ */
+export function errorFromRecord({ event, data }) {
+  if (event !== 'error') return null;
+
+  let payload;
+  try {
+    payload = JSON.parse(data);
+  } catch {
+    return 'The model stopped without explaining why.';
+  }
+
+  const raw = payload?.error?.message || payload?.message || '';
+
+  // Translate the ones a reader can actually act on. Google's own wording runs
+  // to several lines of links and metric names.
+  if (/quota|rate limit|RESOURCE_EXHAUSTED/i.test(raw)) {
+    return "Today's free Gemini quota is used up. It resets tomorrow, or you "
+      + 'can raise it by enabling billing on the Google account.';
+  }
+  if (/safety|blocked/i.test(raw)) {
+    return 'The model declined to answer that passage.';
+  }
+  if (/API key|permission|PERMISSION_DENIED|UNAUTHENTICATED/i.test(raw)) {
+    return 'The server key was refused. Check GEMINI_API_KEY.';
+  }
+  return 'The model could not answer that one.';
+}
+
 /** The incremental text in one Gemini SSE record, or null if it carries none. */
 export function textFromRecord({ event, data }) {
   if (data === '[DONE]') return null;
@@ -72,8 +106,13 @@ export async function askGemini({ apiKey, model, system, input, signal }) {
       generation_config: {
         // Low but not zero: explanations should be steady, not robotic.
         temperature: 0.3,
-        // A hard ceiling on cost per request. Both answers are meant to be short.
-        max_output_tokens: 320,
+        // Gemini 3.x thinks before answering, and those thinking tokens are
+        // billed as output AND spent from max_output_tokens. At 320 the first
+        // real answer arrived cut off mid-sentence. Neither of our questions
+        // needs deep reasoning — one is "say this more simply" — so keep the
+        // thinking short and leave room for the answer itself.
+        thinking_level: 'low',
+        max_output_tokens: 1024,
       },
     }),
     signal,

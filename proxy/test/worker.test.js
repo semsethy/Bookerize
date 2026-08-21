@@ -62,7 +62,7 @@ test('health needs no token', async () => {
   const response = await worker.fetch(request, env(), ctx());
 
   assert.equal(response.status, 200);
-  assert.deepEqual(await response.json(), { ok: true });
+  assert.equal((await response.json()).ok, true);
 });
 
 test('a request without a token is refused', async () => {
@@ -189,6 +189,42 @@ test('the key is sent to Gemini as a header, never in the URL', async () => {
   assert.equal(options.headers['x-goog-api-key'], 'test-key');
   assert.equal(body.model, 'gemini-3.6-flash');
   assert.equal(body.stream, true);
+});
+
+test('the model is given room to answer past its own thinking', async () => {
+  // Gemini 3.x thinks before answering, and thinking tokens are spent from
+  // max_output_tokens. At 320 the first real answer came back cut off
+  // mid-sentence: "...When you give". Neither question here needs deep
+  // reasoning, so thinking stays low and the budget stays generous.
+  globalThis.fetch = fakeGemini(['x']);
+
+  const context = ctx();
+  const response = await worker.fetch(post('/v1/explain', { sentence: 'A sentence.' }), env(), context);
+  await collect(response);
+  await context.settle();
+
+  const config = fakeGemini.lastCall.body.generation_config;
+  assert.equal(config.thinking_level, 'low');
+  assert.ok(config.max_output_tokens >= 1024, 'must leave room for the answer itself');
+});
+
+test('health reports which protections are actually wired up', async () => {
+  // A missing binding used to look exactly like a working one.
+  const response = await worker.fetch(
+    new Request('https://proxy.example/health'),
+    { ...env(), RATE_LIMITER: {} },
+    ctx(),
+  );
+  const body = await response.json();
+
+  assert.equal(body.rateLimiter, true);
+  assert.equal(body.hasKey, true);
+  assert.equal(body.model, 'gemini-3.6-flash');
+});
+
+test('health never reveals the key itself', async () => {
+  const response = await worker.fetch(new Request('https://proxy.example/health'), env(), ctx());
+  assert.doesNotMatch(await response.text(), /test-key/);
 });
 
 test('an upstream failure never leaks the upstream body', async () => {

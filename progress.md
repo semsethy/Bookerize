@@ -7,15 +7,15 @@ picked up on any machine.
 
 ## 🔖 Resume here
 
-> **Current phase:** Phase 5 🟡 **built but unproven** → needs your accounts to finish
-> **Next action (you):** deploy the proxy and run the app against it — see `proxy/README.md`.
-> Everything is written and tested against a fake Gemini; nothing has yet spoken to the real
-> one. Until it does, treat Phase 5 as unfinished.
-> **Next action (me):** once it's deployed, verify a real answer streams end to end, then
-> Phase 6 (notes and reading backgrounds).
-> **Blocked on:** A Cloudflare account and a Gemini API key.
-> ⚠️ Still unconfirmed: that a real finger selects text. Long-press word lookup does not
-> depend on it; "Explain a sentence" does.
+> **Current phase:** Phase 5 🟡 nearly done — **blocked on Gemini free quota**
+> **The proxy is live** at `https://bookerize-proxy.sethy.workers.dev` and has produced real
+> answers (verified by curl). The app reaches it, and error paths display correctly.
+> **Not yet seen:** a real answer rendered *in the card*. The free tier allows 20 requests a
+> day and testing used them up before the gzip fix landed. Retry after the quota resets, or
+> after enabling billing. Run the app with the two `--dart-define`s in `proxy/README.md`;
+> the device token is in `proxy/.local-token` (gitignored).
+> **Blocked on:** Gemini quota only. Nothing else is outstanding.
+> ⚠️ Still unconfirmed: that a real finger selects text (needed for "Explain a sentence").
 
 ### How to resume on a new laptop
 
@@ -155,12 +155,47 @@ Append here whenever a choice is made, so the reasoning survives context resets.
 | 2026-08-21 | Never cache an empty or failed answer | Otherwise one bad moment becomes permanent, and the reader can never ask again. |
 | 2026-08-21 | Config via `--dart-define`, not a settings screen | Keeps every secret out of the repo and off disk. A proper token-entry screen is Phase 8 work, when friends actually need to enter one. |
 | 2026-08-21 | Rate limit via Cloudflare's native binding, not KV | No namespace to create, no write quota to burn, and it keys on the device token rather than an IP. |
+| 2026-08-21 | Ask the proxy for `accept-encoding: identity` | dio does **not** decompress when `ResponseType.stream` is used, so a gzipped stream parsed to nothing and the card sat blank. Compressing an event stream also buffers it, defeating streaming. |
+| 2026-08-21 | Never set `content-encoding` on the Worker's response | Tried it to stop compression; declaring it tells the runtime the body is already encoded and every answer came back as nothing but `[DONE]`. A regression I introduced and caught with curl. |
+| 2026-08-21 | Surface Gemini's `event: error` records | Gemini reports failures *inside* a 200 response. Discarding unknown events — right for the chatty ones — turned a quota error into a blank card. Now translated into something a reader can act on. |
+| 2026-08-21 | An answer with no text is an error, not an empty card | Silence means something upstream changed shape; say so rather than leave the reader staring at nothing. |
 
 ---
 
 ## Session log
 
 Newest first. One entry per working session.
+
+### 2026-08-21 — Phase 5 (part 2): the proxy is live, and it works
+- Deployed to `https://bookerize-proxy.sethy.workers.dev`. Secrets are set; the Gemini key was
+  entered through the Cloudflare dashboard so it never touched a terminal or this repo. The
+  device token lives in `proxy/.local-token` (gitignored) and was piped into the secret
+  without ever being printed.
+- **Real answers, verified:** "That pause is where mutual sharing begins. When the other
+  person is given space, they share something they had not planned to." It also correctly
+  spotted "raw" in "raw material" as figurative — which is exactly what the prompt asks for.
+- **Rate limiting verified:** first 429 at request 22 against a limit of 20/60s. Two earlier
+  attempts wrongly suggested it was broken — one was too slow to fill the window, the other
+  too bursty for a best-effort counter.
+- 72 unit + 39 proxy tests, analyze clean.
+
+**Four real bugs, all found by running it rather than by testing it:**
+
+1. **Answers arrived cut off mid-sentence.** Gemini 3.x thinks before answering, and thinking
+   tokens are billed as output *and* spent from `max_output_tokens`. At 320 there was nothing
+   left for the answer. Now `thinking_level: 'low'` with a 1024 ceiling.
+2. **The card stayed blank.** dio does not decompress when `ResponseType.stream` is used, so
+   a gzipped stream parsed to nothing. The app now asks for `identity`.
+3. **A regression I caused:** setting `content-encoding: identity` on the Worker's *response*
+   made every answer come back as nothing but `[DONE]`. Caught because curl had worked ten
+   minutes earlier and suddenly didn't.
+4. **Gemini reports failures inside a 200 response**, as `event: error`. Discarding unknown
+   events meant a quota error became a blank card. Now translated to plain English.
+
+**⚠️ Blocked on quota, not on code.** The free tier allows 20 requests a day for
+`gemini-3.6-flash`, and testing used them up. The success path is proven through the proxy by
+curl; what has not yet been *seen* is a real answer rendered in the card, because the quota
+ran out before the gzip fix landed. Retry after reset, or after enabling billing.
 
 ### 2026-08-21 — Phase 5 (part 1): the AI layer, built but unproven ⭐
 - `proxy/` — a Cloudflare Worker holding the Gemini key. Two endpoints, per-token auth with a

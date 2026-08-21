@@ -1,4 +1,4 @@
-import { askGemini, createSseParser, textFromRecord } from './gemini.js';
+import { askGemini, createSseParser, errorFromRecord, textFromRecord } from './gemini.js';
 import { LIMITS, sentencePrompt, wordPrompt } from './prompts.js';
 
 /**
@@ -22,7 +22,15 @@ export default {
     const url = new URL(request.url);
 
     if (request.method === 'GET' && url.pathname === '/health') {
-      return json({ ok: true });
+      // Report which protections are actually wired up. A missing binding used
+      // to look exactly like a working one, which is worse than useless for the
+      // thing standing between a lost token and a surprise bill.
+      return json({
+        ok: true,
+        rateLimiter: Boolean(env.RATE_LIMITER),
+        hasKey: Boolean(env.GEMINI_API_KEY),
+        model: env.GEMINI_MODEL || null,
+      });
     }
 
     if (request.method !== 'POST') {
@@ -74,6 +82,10 @@ export default {
 };
 
 async function streamAnswer({ env, prompt, ctx, signal }) {
+  // Set DEBUG_UPSTREAM=1 to log what Gemini actually sends. Off by default
+  // because it would log the reader's sentences and the answers. Deploy with:
+  //   npx wrangler deploy --var DEBUG_UPSTREAM:1
+  globalThis.__BOOKERIZE_DEBUG = env.DEBUG_UPSTREAM === '1';
   let upstream;
   try {
     upstream = await askGemini({
@@ -99,7 +111,14 @@ async function streamAnswer({ env, prompt, ctx, signal }) {
   return new Response(readable, {
     headers: {
       'content-type': 'text/event-stream; charset=utf-8',
-      'cache-control': 'no-cache',
+      // no-transform stops anything in between compressing or buffering the
+      // stream, which would both defeat streaming and hand the app bytes it
+      // cannot read.
+      //
+      // Do NOT set content-encoding here. Declaring it on a Response tells the
+      // runtime the body is already encoded, and it then produced an empty
+      // stream — every answer came back as nothing but [DONE].
+      'cache-control': 'no-cache, no-transform',
       connection: 'keep-alive',
     },
   });
@@ -119,7 +138,16 @@ async function pump(source, writable) {
       const { done, value } = await reader.read();
       if (done) break;
 
-      for (const record of parse(decoder.decode(value, { stream: true }))) {
+      const decodedChunk = decoder.decode(value, { stream: true });
+      if (globalThis.__BOOKERIZE_DEBUG) console.log('UPSTREAM:', decodedChunk.slice(0, 400));
+
+      for (const record of parse(decodedChunk)) {
+        const failure = errorFromRecord(record);
+        if (failure !== null) {
+          await send(JSON.stringify({ error: failure }));
+          return; // the finally block still sends [DONE]
+        }
+
         const text = textFromRecord(record);
         if (text !== null) await send(JSON.stringify({ text }));
       }
