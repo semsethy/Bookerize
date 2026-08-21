@@ -11,7 +11,7 @@ picked up on any machine.
 > **Next action:** Cloudflare Worker holding the API key, per-device tokens, rate limiting.
 > Then wire the two placeholders that are already on screen: "What does it mean here?" on the
 > word card, and "Explain" on the selection toolbar. Cache every result in Drift.
-> **Blocked on:** A Cloudflare account — the first thing in this phase that isn't free.
+> **Blocked on:** A Cloudflare account, and a **Gemini API key** from Google AI Studio.
 > ⚠️ Still unconfirmed: that a real finger selects text (see Phase 3's note). Long-press
 > lookup is proven on device and does *not* depend on it, but "Explain a sentence" does.
 
@@ -120,7 +120,7 @@ Append here whenever a choice is made, so the reasoning survives context resets.
 | 2026-08-20 | API key behind a Cloudflare Worker proxy, never in the app | App ships to other devices; an embedded key would be extracted from the IPA |
 | 2026-08-20 | `pdfrx` as the PDF engine | Only package giving both rendering and per-character text coordinates |
 | 2026-08-20 | Page curl deferred to Phase 7, hybrid approach | Native `pdfrx` selection lives in its viewer widget; a bitmap-based curl would break Phases 4–5 |
-| 2026-08-20 | `claude-opus-5` with streaming | Explanation quality; streaming hides latency |
+| 2026-08-20 | `claude-opus-5` with streaming | Explanation quality; streaming hides latency. *(Superseded 2026-08-21 — see below.)* |
 | 2026-08-20 | Hybrid dictionary: offline WordNet + AI for context | Instant and free for the common case; AI only for genuine ambiguity |
 | 2026-08-20 | **Swift Package Manager, not CocoaPods** | Verified `pdfium_flutter` (pdfrx's native layer) ships `darwin/pdfium_flutter/Package.swift`. SPM is default from Flutter 3.44. The CocoaPods registry goes read-only 2026-12-02, so building on it now would start on a sunset dependency. *(Superseded same day by the outright prohibition below.)* |
 | 2026-08-20 | Upgrade Flutter 3.41.9 → 3.47.1 | Gets SPM-by-default; no code written yet so the upgrade carries no regression risk |
@@ -145,6 +145,7 @@ Append here whenever a choice is made, so the reasoning survives context resets.
 | 2026-08-21 | Cap at 5 senses per lemma, skip multi-word entries | Multi-word entries can never be reached by long-pressing one word, and the first few senses are the ones a reader wants. Keeps the bundle at 12.3 MB. |
 | 2026-08-21 | Commit the 12.3 MB dictionary | Same reason as the generated Drift code: a fresh clone has to build without first running a script that downloads 16 MB from Princeton. |
 | 2026-08-21 | Word card rises from the bottom, not over the word | A popover covers the sentence you were reading and sits where your thumb isn't. Settled in the design review and now built. |
+| 2026-08-21 | **Gemini instead of Claude** — `gemini-3.6-flash`, streaming | Owner's choice. Cost nothing to change: Phase 5 had not started, and no code referenced a provider. Also ~7x cheaper per explanation (~650 per dollar against ~100), and Gemini has a free tier that may cover a group this size outright. The proxy stays — that reasoning never depended on the provider. |
 
 ---
 

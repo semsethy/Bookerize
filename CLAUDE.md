@@ -43,8 +43,9 @@ project get built. This means:
    dependency is verified to build via Swift Package Manager or native-asset build hooks
    (`hook/build.dart`). If a package requires CocoaPods, **replace the package** — do not
    install CocoaPods, do not add a Podfile, do not suggest it as a fallback.
-1. **Never commit an API key.** The Anthropic key lives in the Cloudflare Worker proxy, set
-   via `wrangler secret`. If you find a key in the repo, stop and remove it.
+1. **Never commit an API key.** The Gemini key lives in the Cloudflare Worker proxy, set via
+   `wrangler secret`. If you find a key in the repo, stop and remove it. This holds whatever
+   the provider is — a key inside a Flutter app can be pulled straight out of the IPA.
 2. **Never break `pdfrx`'s native text selection.** Phases 4–5 depend on it. See PLAN.md §5
    before touching the page-turn implementation.
 3. **Long-press on a page with no text must fail silently.** 46 of 137 pages in the sample
@@ -57,14 +58,14 @@ project get built. This means:
 ## Architecture at a glance
 
 ```
-Flutter app ──HTTPS──> Cloudflare Worker (holds API key) ──> Claude API
+Flutter app ──HTTPS──> Cloudflare Worker (holds API key) ──> Gemini API
      │
      ├── pdfrx        (render + text coordinates + selection)
      ├── Drift        (SQLite: books, progress, notes, explanation cache)
      └── WordNet SQLite (bundled, offline definitions)
 ```
 
-Model: `claude-opus-5`, streaming responses.
+Model: `gemini-3.6-flash`, streaming responses (`streamGenerateContent`, `?alt=sse`).
 
 ## Sample books are NOT in the repo
 

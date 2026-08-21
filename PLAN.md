@@ -31,7 +31,7 @@ Target audience: you and a small group of friends. English-language books.
 | API key location | **Proxy server, never in the app** | The app ships to other people; an embedded key would be extracted |
 | PDF engine | **`pdfrx`** (PDFium) | Only option giving both rendering *and* per-character text coordinates |
 | Page curl | **Hybrid (Option C)** — deferred to last phase | See §5 |
-| Model | **`claude-opus-5`**, streaming | Best explanation quality; streaming makes it feel instant |
+| Model | **`gemini-3.6-flash`**, streaming | Owner's choice of provider. Positioned for everyday text; streaming makes it feel instant |
 | Offline dictionary | **Bundled WordNet SQLite** | Instant word meanings with no network, no cost |
 
 ### ⚠️ Two things that cost money
@@ -39,11 +39,16 @@ Target audience: you and a small group of friends. English-language books.
 1. **Apple Developer Program — $99/year.** Required for TestFlight *and* for running on a
    physical iPhone. The iOS Simulator is free, so Phases 1–6 can be built without paying.
    You only need this when you want the app on a real phone or shared with friends.
-2. **Claude API usage.** Rough estimate at `claude-opus-5` rates ($5/M input, $25/M output):
-   a sentence explanation is ~500 input + ~300 output tokens ≈ **$0.01 per explanation**,
-   so roughly **100 explanations per dollar**. Word-in-context lookups are cheaper (~$0.004).
-   Offline dictionary lookups are free. If costs get uncomfortable, switching to
-   `claude-haiku-4-5` cuts it ~5×, at some quality cost — your call, not an automatic change.
+2. **Gemini API usage.** At `gemini-3.6-flash` rates ($0.75/M input, $3.75/M output, as
+   listed August 2026 — the page notes these roughly double on 1 Jan 2027): a sentence
+   explanation is ~500 input + ~300 output tokens ≈ **$0.0015**, so roughly **650
+   explanations per dollar**. Word-in-context lookups are cheaper still (~$0.001, about
+   1,000 per dollar). Offline dictionary lookups are free and always will be.
+
+   Gemini also has a **free tier**. Google publishes the limits per account in AI Studio
+   rather than in the docs, so check yours — for a handful of readers it may cover the whole
+   thing. Cheaper alternatives if usage ever bites: `gemini-3.5-flash-lite` ($0.30/$2.50).
+   `gemini-3.7-flash` costs the same as 3.6 if you'd rather be on the newest.
 
 ---
 
@@ -74,17 +79,19 @@ Target audience: you and a small group of friends. English-language books.
                    │ HTTPS
         ┌──────────▼───────────────┐
         │  Cloudflare Worker proxy │
-        │  holds ANTHROPIC_API_KEY │
+        │  holds GEMINI_API_KEY    │
         │  rate-limits per device  │
         └──────────┬───────────────┘
                    │
-             Claude API
+             Gemini API
 ```
 
 ### Why a proxy
 
-Flutter apps are decompilable. An `ANTHROPIC_API_KEY` compiled into the binary can be
-extracted from the IPA in minutes and used to bill your account. The proxy holds the key
+Flutter apps are decompilable. A `GEMINI_API_KEY` compiled into the binary can be
+extracted from the IPA in minutes and used to bill your account. This reasoning does not
+depend on which provider you use — any key that ships inside the app is a key you have given
+away. The proxy holds the key
 server-side; the app authenticates with a per-device token that you can revoke.
 
 **Cloudflare Workers** is the recommended host: free tier covers this workload comfortably,
@@ -162,7 +169,8 @@ The technical heart of the project.
 sentence shows a toolbar with a (non-functional) Explain button.
 
 ### Phase 5 — AI layer ⭐
-- Cloudflare Worker proxy: holds the key, per-device tokens, rate limiting
+- Cloudflare Worker proxy: holds the `GEMINI_API_KEY`, per-device tokens, rate limiting
+- Streaming via Gemini's `streamGenerateContent` with `?alt=sse`
 - "Meaning in this sentence" → streams into the word popup
 - "Explain simply" → streams into a bottom sheet
 - Cache every result in Drift so the same lookup is never billed twice

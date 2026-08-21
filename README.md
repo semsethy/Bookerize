@@ -28,7 +28,7 @@ book.
 - **[pdfrx](https://pub.dev/packages/pdfrx)** — PDFium rendering with per-character text coordinates
 - **Drift** (SQLite) — local storage for books, progress, notes, and cached explanations
 - **WordNet (SQLite)** — bundled offline dictionary
-- **Claude API** via a Cloudflare Worker proxy — contextual meanings and explanations
+- **Gemini API** via a Cloudflare Worker proxy — contextual meanings and explanations
 
 ## Getting started
 
@@ -65,9 +65,9 @@ needs an embedded text layer to do word lookup.
 
 ## Security
 
-The Anthropic API key **never ships in the app**. Flutter binaries are decompilable, so the
-key lives in a Cloudflare Worker proxy and the app authenticates with a revocable per-device
-token.
+The Gemini API key **never ships in the app**. Flutter binaries are decompilable, so the key
+lives in a Cloudflare Worker proxy and the app authenticates with a revocable per-device
+token. That holds for any provider — a key inside the app is a key you have given away.
 
 ## Project docs
 
