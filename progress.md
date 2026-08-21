@@ -7,9 +7,9 @@ picked up on any machine.
 
 ## 🔖 Resume here
 
-> **Current phase:** Phase 0 ✅ complete → starting **Phase 1 (A PDF on screen)**
-> **Next action:** run `./tool/preflight.sh`, then `flutter doctor`, boot the Simulator, `flutter create`
-> the real app and get the sample book rendering.
+> **Current phase:** Phase 1 ✅ complete → starting **Phase 2 (Library and persistence)**
+> **Next action:** add `drift` + `path_provider`, define the schema (books, reading progress),
+> and replace the hardcoded single-book screen with a library list that opens a book.
 > **Blocked on:** Nothing.
 
 ### How to resume on a new laptop
@@ -46,7 +46,7 @@ Claude Code reads `CLAUDE.md` automatically, which points at `PLAN.md` and this 
 | # | Phase | Status | Notes |
 |---|---|---|---|
 | 0 | Environment setup | ✅ Done | Flutter 3.47.1, SPM on, full dep audit passed |
-| 1 | A PDF on screen | ⬜ Not started | |
+| 1 | A PDF on screen | ✅ Done | pdfrx renders the sample book in the Simulator |
 | 2 | Library and persistence | ⬜ Not started | |
 | 3 | Full-screen paging | ⬜ Not started | |
 | 4 | Text interaction layer | ⬜ Not started | The hard one |
@@ -125,12 +125,27 @@ Append here whenever a choice is made, so the reasoning survives context resets.
 | 2026-08-20 | **Isar → Drift** for local storage | Isar's last publish was 2023-04-25 (3+ years stale, effectively abandoned). Drift is active (2026-07-27), SQLite-backed, so app data and the WordNet dictionary share one engine instead of two. |
 | 2026-08-20 | Do not add `sqlite3_flutter_libs` | It is now an EOL no-op stub. `sqlite3` 3.5.2 builds its own native lib via `hook/build.dart`. |
 | 2026-08-20 | Build our own WordNet SQLite | No maintained Flutter WordNet package exists (`dictionaryx` last published 2022). Princeton raw data is available; one-time preprocessing gives us control over bundle size. |
+| 2026-08-21 | Bundle id `com.semsethy.bookerize`, iOS-only scaffold | Matches the GitHub org; Android platform folder can be added later with `flutter create --platforms=android .` |
+| 2026-08-21 | Find the book by scanning `AssetManifest` instead of hardcoding a filename | Sample PDFs are gitignored, so the filename differs per machine — a hardcoded path would break every fresh clone |
 
 ---
 
 ## Session log
 
 Newest first. One entry per working session.
+
+### 2026-08-21 — Phase 1: a PDF on screen
+- Ran `./tool/preflight.sh` — exit 0 (only warning was "no Flutter project yet"; now resolved)
+- `flutter create` in place: project `bookerize`, org `com.semsethy`, **iOS platform only**
+- Added `pdfrx` 2.4.7; **no Podfile was generated and none exists anywhere in the tree** ✓
+- Registered `assets/books/` in pubspec; `lib/main.dart` finds the first bundled PDF via
+  `AssetManifest` and shows a plain "copy a PDF into assets/books/" message when none is there
+- Left `pdfrx` text selection at its default (enabled) — Phases 4–5 depend on it
+- Replaced the template widget test; `flutter analyze` clean, `flutter test` passing
+- **Verified running on the iPhone 16 Pro Simulator** — the sample book renders and scrolls
+- ⏱️ First iOS build takes **~20 minutes**: `pdfium_flutter` compiles three pdfium SDK slices
+  (ios / ios-profile / ios-release) from source via SPM. Cached afterwards; later builds ~50s.
+  On a new machine, expect this once and don't assume the build has hung.
 
 ### 2026-08-20 — Phase 0: prerequisite audit
 - Upgraded Flutter 3.41.9 → **3.47.1**; enabled SPM explicitly
