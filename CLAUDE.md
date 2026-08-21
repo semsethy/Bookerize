@@ -85,13 +85,18 @@ Analyzed `the_communication_book_44_ideas_for_better_conversations_every_day.pdf
 **iOS builds use Swift Package Manager, never CocoaPods.** See non-negotiable #0.
 Verified CocoaPods-free as of 2026-08-20: `pdfium_flutter` (SPM), `file_picker_darwin` (SPM),
 `path_provider_foundation` (SPM), `url_launcher_ios` (SPM), `sqlite3` (build hook).
+
 Do **not** add `sqlite3_flutter_libs` — it is an EOL no-op stub.
+Do **not** add `drift_flutter` — it pulls `sqlite3_flutter_libs` *and* `sqlcipher_flutter_libs`
+(both `+eol` stubs) in transitively. Use `drift` + `sqlite3` and open the database with
+`NativeDatabase` directly; that is what `lib/data/app_database.dart` does.
 
 ```bash
 flutter run -d iphone        # run on iOS Simulator
 flutter analyze              # static analysis — run before committing
 flutter test                 # unit tests
 dart format .                # format
+dart run build_runner build  # regenerate Drift code after changing a table
 cd proxy && npx wrangler dev  # run the proxy locally (Phase 5+)
 ```
 
@@ -100,5 +105,8 @@ cd proxy && npx wrangler dev  # run the proxy locally (Phase 5+)
 - State management: `riverpod`
 - Format with `dart format`; keep `flutter analyze` clean
 - Feature-first folder layout under `lib/` (`lib/library/`, `lib/reader/`, `lib/dictionary/`,
-  `lib/ai/`)
+  `lib/ai/`), with shared data access in `lib/data/`
+- Generated `*.g.dart` files **are committed** so a fresh clone compiles without extra steps
+- Book and cover paths are stored in the database **relative** to the documents directory —
+  iOS renames the app container, so absolute paths go stale
 - Commit at the end of each phase with a message naming the phase

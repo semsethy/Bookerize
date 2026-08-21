@@ -4,8 +4,11 @@
 build/
 .flutter-plugins
 .flutter-plugins-dependencies
-*.g.dart
-*.freezed.dart
+
+# Generated Drift code is COMMITTED on purpose. It is normally gitignored, but
+# this project gets cloned onto a second machine and has to build immediately;
+# ignoring it means a fresh clone fails to compile until someone knows to run
+# `dart run build_runner build`. Regenerate after changing a table.
 
 # iOS
 ios/Pods/

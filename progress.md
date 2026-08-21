@@ -7,9 +7,9 @@ picked up on any machine.
 
 ## 🔖 Resume here
 
-> **Current phase:** Phase 1 ✅ complete → starting **Phase 2 (Library and persistence)**
-> **Next action:** add `drift` + `path_provider`, define the schema (books, reading progress),
-> and replace the hardcoded single-book screen with a library list that opens a book.
+> **Current phase:** Phase 2 ✅ complete → starting **Phase 3 (Full-screen paging)**
+> **Next action:** one page per screen, horizontal swipe with a plain `PageView`. Deliberately
+> not the page curl yet — see PLAN.md §5 for why that waits until Phase 7.
 > **Blocked on:** Nothing.
 
 ### How to resume on a new laptop
@@ -47,7 +47,7 @@ Claude Code reads `CLAUDE.md` automatically, which points at `PLAN.md` and this 
 |---|---|---|---|
 | 0 | Environment setup | ✅ Done | Flutter 3.47.1, SPM on, full dep audit passed |
 | 1 | A PDF on screen | ✅ Done | pdfrx renders the sample book in the Simulator |
-| 2 | Library and persistence | ⬜ Not started | |
+| 2 | Library and persistence | ✅ Done | Drift + import + covers; resumes your page |
 | 3 | Full-screen paging | ⬜ Not started | |
 | 4 | Text interaction layer | ⬜ Not started | The hard one |
 | 5 | AI layer (+ proxy) | ⬜ Not started | Needs Cloudflare account |
@@ -127,12 +127,41 @@ Append here whenever a choice is made, so the reasoning survives context resets.
 | 2026-08-20 | Build our own WordNet SQLite | No maintained Flutter WordNet package exists (`dictionaryx` last published 2022). Princeton raw data is available; one-time preprocessing gives us control over bundle size. |
 | 2026-08-21 | Bundle id `com.semsethy.bookerize`, iOS-only scaffold | Matches the GitHub org; Android platform folder can be added later with `flutter create --platforms=android .` |
 | 2026-08-21 | Find the book by scanning `AssetManifest` instead of hardcoding a filename | Sample PDFs are gitignored, so the filename differs per machine — a hardcoded path would break every fresh clone |
+| 2026-08-21 | **Do not use `drift_flutter`** | It pulls `sqlite3_flutter_libs` *and* `sqlcipher_flutter_libs`, both `+eol` no-op stubs already ruled out in Phase 0. `drift` + `sqlite3` with `NativeDatabase` gives the same thing with nothing banned in the tree. |
+| 2026-08-21 | Store book/cover paths **relative** to the documents directory | iOS hands the app a newly-named container on reinstall, so an absolute path saved today points nowhere tomorrow. Confirmed live: the container UUID changed between runs during testing. |
+| 2026-08-21 | **Commit generated `*.g.dart`** (was gitignored) | This project is cloned onto a second machine and must build immediately. Ignoring generated Drift code means a fresh clone fails to compile until someone knows to run `build_runner`. |
+| 2026-08-21 | Opening a book marks it as read, not just turning a page | pdfrx only reports page changes the reader makes, so without this the shelf still said "Not started" after a full session. |
+| 2026-08-21 | Covers use `BoxFit.contain` on white, not `BoxFit.cover` | Page proportions vary book to book; cropping ate the title off the edges of the sample book. |
 
 ---
 
 ## Session log
 
 Newest first. One entry per working session.
+
+### 2026-08-21 — Phase 2: library and persistence
+- Added `drift`, `sqlite3`, `file_picker`, `path_provider`, `flutter_riverpod`, `path`
+- **Caught `drift_flutter` dragging in two banned EOL stubs** — dropped it, wired
+  `NativeDatabase` directly instead. Nothing prohibited is in the tree.
+- `lib/data/app_database.dart` — Drift schema: title, file name, cover, page count, last page,
+  text-layer flag, added/last-opened timestamps
+- `lib/data/book_repository.dart` — copies PDFs into app storage, renders page 1 as a cover
+  PNG, samples pages for a text layer, seeds any bundled book on first run
+- `lib/library/library_screen.dart` — cover grid, import via Files/iCloud, long-press to remove
+- `lib/reader/reader_screen.dart` — opens at your saved page, writes position on every turn
+- 8 tests, `flutter analyze` clean
+- **Verified on the Simulator across cold launches:** set a page in the on-device SQLite,
+  relaunched, and the shelf read "p. 47 / 137"; the reader reopened at page 47 and later at 88
+- Two real bugs found and fixed while verifying:
+  1. `ReaderScreen` used repository file paths without guaranteeing storage was initialised —
+     it only worked because the library screen happened to run first. Now it waits on
+     `startupProvider`, and the repository throws a readable error instead of
+     `LateInitializationError` if anyone gets the order wrong again.
+  2. Opening a book left it showing "Not started" forever, because pdfrx only reports page
+     changes the reader actually makes.
+- ⚠️ **Not yet verified by hand:** saving on an actual swipe. The write path is proven on
+  device (opening a book writes to SQLite) and `saveLastPage` is unit-tested, but no test
+  drives a real page-turn gesture. Worth confirming in Phase 3 when paging is built.
 
 ### 2026-08-21 — Phase 1: a PDF on screen
 - Ran `./tool/preflight.sh` — exit 0 (only warning was "no Flutter project yet"; now resolved)
